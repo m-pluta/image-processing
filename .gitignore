@@ -2,6 +2,7 @@ image_processing_files.zip
 classifier.model
 classify.py
 xray_images/
+report/report.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
