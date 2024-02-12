@@ -1,8 +1,9 @@
 import os
 import cv2
 
+
 def measure():
-    model =  cv2.dnn.readNetFromONNX('image_processing_files/classifier.model')
+    model = cv2.dnn.readNetFromONNX('image_processing_files/classifier.model')
 
     names = []
     healthys = []
@@ -33,18 +34,19 @@ def measure():
         if img is not None:
 
             # pass the image through the neural network:
-            blob = cv2.dnn.blobFromImage(img, 1.0 / 255, (256, 256),(0, 0, 0), swapRB=True, crop=False)
+            blob = cv2.dnn.blobFromImage(
+                img, 1.0 / 255, (256, 256), (0, 0, 0), swapRB=True, crop=False)
             model.setInput(blob)
             output = model.forward()
 
             # identify what the predicted label is:
-            if(output > 0.5):
+            if (output > 0.5):
                 # print(f'{filename}: pneumonia')
-                if(filename.startswith(tuple(pneumonias))):
+                if (filename.startswith(tuple(pneumonias))):
                     correct += 1
             else:
                 # print(f'{filename}: healthy')
-                if(filename.startswith(tuple(healthys))):
+                if (filename.startswith(tuple(healthys))):
                     correct += 1
 
     return correct / len(names)

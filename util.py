@@ -2,6 +2,7 @@ import cv2
 import random
 import matplotlib.pyplot as plt
 
+
 def show_random_images(image_paths):
     GRID = 4
 

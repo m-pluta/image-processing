@@ -1,24 +1,53 @@
 import cv2
+import numpy as np
+
+
+def get_image_corners(image):
+    # Convert to gray-scale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Get the binary thresholded image
+    _, thresh = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
+
+    # Find all the contours in the image
+    contours, _ = cv2.findContours(
+        thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Get the contour with max area - this should be the image
+    contour = max(contours, key=cv2.contourArea)
+
+    # Approximate the contour to a quadrilateral and get the corners
+    peri = cv2.arcLength(contour, True)
+    corners = cv2.approxPolyDP(contour, 0.02 * peri, True)
+
+    return corners
+
 
 def perspective_correction(image):
-    # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    cv2.imshow('Original', gray)
-    
-    _, thresh = cv2.threshold(gray, 5, 255, cv2.THRESH_BINARY)
-    
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    #print(contours)
-    
-    contour = max(contours, key=cv2.contourArea)
-    
-    print(contour)
-    
-    cv2.drawContours(image, [contour], -1, (0,255,0), 1)
-    
-    # Display the image with detected corners
-    cv2.imshow('Detected Corners', image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # Find the corners in the image
+    corners = get_image_corners(image)
+
+    # Define the destination position
+    destination = np.array([
+        [255, 0],
+        [0, 0],
+        [0, 255],
+        [255, 255],
+    ], dtype="float32")
+
+    # Define the matrix for the perspective transform
+    matrix = cv2.getPerspectiveTransform(
+        corners.astype(np.float32), destination)
+
+    # Apply the perspective transform to the image
+    image = cv2.warpPerspective(image, matrix, (256, 256))
+
+    return image
+
+
+def drawBorders(image):
+    # Get the corners of the image
+    corners = get_image_corners(image)
+
+    # Draw the borders onto the image
+    cv2.drawContours(image, [corners], -1, (0, 255, 0), 1)
