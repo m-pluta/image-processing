@@ -3,6 +3,7 @@ classifier.model
 classify.py
 xray_images/
 report/report.pdf
+Results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
