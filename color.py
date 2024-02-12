@@ -37,7 +37,7 @@ def equalizeHist_YUV(image):
     return image_eq
 
 
-def equalizeHist(image, mode):
+def equalizeHist(image, mode='LAB'):
     if mode == 'LAB':
         return equalizeHist_LAB(image)
     elif mode == 'HSV':
