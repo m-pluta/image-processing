@@ -6,7 +6,7 @@ from color import equalizeHist
 from util import show_random_images
 from measure import measure
 from perspective import perspective_correction, drawBorders
-from blur import median_blur, N1_means_blur
+from blur import median_blur, N1_means_blur, bilateral_blur
 from filter import butterworth
 
 DEFAULT_IMAGE_DIR = 'image_processing_files/xray_images/'
@@ -21,8 +21,9 @@ def process_images(images: list[str], in_dir: str, out_dir: str):
         # Read in the image
         image_path = os.path.join(in_dir, image_name)
         image = cv2.imread(image_path)
-        
-        image = perspective_correction(image)
+
+        image = bilateral_blur(image)
+        image = perspective_correction(image, 1)
         image = equalizeHist(image)
         image = N1_means_blur(image)
 
@@ -30,9 +31,7 @@ def process_images(images: list[str], in_dir: str, out_dir: str):
         output_path = os.path.join(out_dir, image_name)
         cv2.imwrite(output_path, image)
 
-
-    print(measure())
-        
+    print(measure('test.png'))
 
 
 if __name__ == '__main__':

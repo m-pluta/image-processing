@@ -7,7 +7,7 @@ def get_image_corners(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Get the binary thresholded image
-    _, thresh = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(gray, 8, 255, cv2.THRESH_BINARY)
 
     # Find all the contours in the image
     contours, _ = cv2.findContours(
@@ -23,16 +23,16 @@ def get_image_corners(image):
     return corners
 
 
-def perspective_correction(image):
+def perspective_correction(image, delta=0):
     # Find the corners in the image
     corners = get_image_corners(image)
 
     # Define the destination position
     destination = np.array([
-        [255, 0],
-        [0, 0],
-        [0, 255],
-        [255, 255],
+        [255 + delta, -delta],
+        [-delta, -delta],
+        [-delta, 255 + delta],
+        [255 + delta, 255 + delta],
     ], dtype="float32")
 
     # Define the matrix for the perspective transform
