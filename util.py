@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 def show_random_images(image_paths):
-    GRID = 4
+    GRID = 2
 
     # Select random images
     random_paths = random.sample(image_paths, GRID * GRID)
@@ -19,4 +19,6 @@ def show_random_images(image_paths):
         # axes[i // GRID, i % GRID].set_title(image_file)
         axes[i // GRID, i % GRID].axis('off')
 
-    plt.show()
+    plt.tight_layout()
+    plt.savefig("view.png")
+    

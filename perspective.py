@@ -13,6 +13,9 @@ def get_image_corners(image):
     contours, _ = cv2.findContours(
         thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    # # Draw the contours onto the image
+    # cv2.drawContours(image, contours, -1, (0, 255, 0), 1)
+
     # Get the contour with max area - this should be the image
     contour = max(contours, key=cv2.contourArea)
 
@@ -23,9 +26,7 @@ def get_image_corners(image):
     return corners
 
 
-def perspective_correction(image, delta=0):
-    # Find the corners in the image
-    corners = get_image_corners(image)
+def perspective_correction(image, corners, delta = 0):
 
     # Define the destination position
     destination = np.array([

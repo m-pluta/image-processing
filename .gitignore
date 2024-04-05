@@ -4,6 +4,8 @@ classify.py
 xray_images/
 report/report.pdf
 Results/
+dist.png
+view.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
