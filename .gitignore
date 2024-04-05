@@ -6,6 +6,8 @@ report/report.pdf
 Results/
 dist.png
 view.png
+contour.png
+split.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

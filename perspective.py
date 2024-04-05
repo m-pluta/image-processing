@@ -30,10 +30,10 @@ def perspective_correction(image, corners, delta = 0):
 
     # Define the destination position
     destination = np.array([
-        [255 + delta, -delta],
-        [-delta, -delta],
-        [-delta, 255 + delta],
-        [255 + delta, 255 + delta],
+        [255 - delta, + delta],
+        [+ delta, + delta],
+        [+ delta, 255 - delta],
+        [255 - delta, 255 - delta],
     ], dtype="float32")
 
     # Define the matrix for the perspective transform

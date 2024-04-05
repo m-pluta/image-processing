@@ -1,0 +1,5 @@
+{
+    "files.trimTrailingWhitespace": true,
+    "pythonIndent.trimLinesWithOnlyWhitespace": false,
+    "files.trimFinalNewlines": true
+}
