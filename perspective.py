@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def get_image_corners(image):
     # Convert to gray-scale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -24,7 +25,8 @@ def get_image_corners(image):
 
     return corners
 
-def perspective_correction(image, corners, delta = 0):
+
+def perspective_correction(image, corners, delta=0):
 
     # Define the destination position
     destination = np.array([
@@ -42,6 +44,7 @@ def perspective_correction(image, corners, delta = 0):
     image = cv2.warpPerspective(image, matrix, (256, 256))
 
     return image
+
 
 def drawBorders(image):
     # Get the corners of the image

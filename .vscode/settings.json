@@ -1,5 +1,9 @@
 {
     "files.trimTrailingWhitespace": true,
     "pythonIndent.trimLinesWithOnlyWhitespace": false,
-    "files.trimFinalNewlines": true
+    "files.trimFinalNewlines": true,
+    "editor.defaultFormatter": "ms-python.autopep8",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.formatOnPaste": true
 }

@@ -43,8 +43,10 @@ def measure(show_dist: bool = False, outpath: str = None):
     df = pd.DataFrame(df)
 
     # Show all wrong predictions
-    pneumonia_low_pred = list(df[(df['label'] == 'p') & (df['pred'] < 0.5)]['image'])
-    healthy_high_pred = list(df[(df['label'] == 'h') & (df['pred'] > 0.5)]['image'])
+    pneumonia_low_pred = list(
+        df[(df['label'] == 'p') & (df['pred'] < 0.5)]['image'])
+    healthy_high_pred = list(
+        df[(df['label'] == 'h') & (df['pred'] > 0.5)]['image'])
 
     pneumonia_low_pred = [name[2:5] for name in pneumonia_low_pred]
     healthy_high_pred = [name[2:5] for name in healthy_high_pred]
@@ -54,7 +56,6 @@ def measure(show_dist: bool = False, outpath: str = None):
     print("Wrong healthy images")
     print(", ".join(healthy_high_pred))
 
-
     # Plotting a stacked histogram
     plt.figure(figsize=(6, 6))
 
@@ -63,7 +64,8 @@ def measure(show_dist: bool = False, outpath: str = None):
     df_h = df[df['label'] == 'h']['pred']
 
     # Stacked histogram without edge color for bars
-    plt.hist([df_h, df_p], bins=30, stacked=True, color=['blue', 'red'], label=['Healthy', 'Pneumonia'], alpha=0.7)
+    plt.hist([df_h, df_p], bins=30, stacked=True, color=[
+             'blue', 'red'], label=['Healthy', 'Pneumonia'], alpha=0.7)
 
     # Adding a vertical dotted line at 0.5
     plt.axvline(x=0.5, color='gray', linestyle='--', linewidth=1.5)

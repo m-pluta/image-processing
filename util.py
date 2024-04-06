@@ -24,6 +24,7 @@ def show_random_images(image_paths):
     plt.tight_layout()
     plt.savefig("view.png")
 
+
 def show_random_split_image_color(image_paths):
 
     # Select the random image
@@ -55,6 +56,7 @@ def show_random_split_image_color(image_paths):
 
     plt.tight_layout()
     plt.savefig("split.png")
+
 
 def show_random_split_image_gray(image_paths):
     # Select a random image
