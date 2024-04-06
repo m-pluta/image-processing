@@ -15,7 +15,7 @@ RESULT_DIR = 'Results/'
 
 def process_images(image_names: list[str], in_dir: str, out_dir: str):
 
-    for _, image_name in enumerate(image_names):
+    for _, image_name in enumerate(image_names[2:]):
         # Read in the image
         image_path = os.path.join(in_dir, image_name)
         image = cv2.imread(image_path)
@@ -35,61 +35,106 @@ def process_images(image_names: list[str], in_dir: str, out_dir: str):
     full_image_paths = [os.path.join(out_dir, image_name) for image_name in image_names]
 
     show_random_images(full_image_paths)
-    show_random_split_image(full_image_paths)
+    show_random_split_image_gray(full_image_paths)
 
 def contourRemoval(image, image_name: str):
-    # Setup for displaying the process
-    _, axs = plt.subplots(3, 2, figsize=(6, 9))
+    view = False
+    if view:
+        # Setup for displaying the process
+        _, axs = plt.subplots(4, 2, figsize=(6, 12))
 
-
-    # Display the original coloured image
-    axs[0, 0].imshow(image)
-    axs[0, 0].set_title(f'Original ({image_name.split(".")[0]})')
-    axs[0, 0].axis('off')
+        # Display the original coloured image
+        axs[0, 0].imshow(image)
+        axs[0, 0].set_title(f'Original ({image_name.split(".")[0]})')
+        axs[0, 0].axis('off')
 
 
     # Convert image to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Display the original grayscale image
-    axs[0, 1].imshow(gray, cmap='gray')
-    axs[0, 1].set_title('Original (Grayscale)')
-    axs[0, 1].axis('off')
+    if view:
+        # Display the original grayscale image
+        axs[0, 1].imshow(gray, cmap='gray')
+        axs[0, 1].set_title('Original (Grayscale)')
+        axs[0, 1].axis('off')
 
 
     # Threshold the grayscale image to get a binary image
     _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
     thresh = cv2.bitwise_not(thresh)
+    if view:
+        # Display the threshold
+        axs[1, 0].imshow(thresh, cmap='gray')
+        axs[1, 0].set_title('Fixed Threshold')
+        axs[1, 0].axis('off')
 
-    # Display the threshold
-    axs[1, 0].imshow(thresh, cmap='gray')
-    axs[1, 0].set_title('Threshold')
-    axs[1, 0].axis('off')
+
+    adap_thresh = cv2.adaptiveThreshold(
+        gray,               # Source image
+        255,                # MaxVal: The maximum intensity for the white color
+        cv2.ADAPTIVE_THRESH_MEAN_C,  # Adaptive method: Mean or Gaussian
+        cv2.THRESH_BINARY,  # Threshold type
+        11,                 # Block size: Size of the neighborhood area used to calculate the threshold for each pixel
+        50                   # C: Constant subtracted from the calculated mean or weighted mean
+    )
+    adap_thresh = cv2.bitwise_not(adap_thresh)
+    if view:
+        # Display the threshold
+        axs[1, 1].imshow(adap_thresh, cmap='gray')
+        axs[1, 1].set_title('Adaptive Threshold')
+        axs[1, 1].axis('off')
 
 
+    thresh_small = threshFilter(thresh, 4)
+    if view:
+        # Display the updated threshold
+        axs[2, 0].imshow(thresh_small, cmap='gray')
+        axs[2, 0].set_title('Fix. Threshold - Small contours')
+        axs[2, 0].axis('off')
+
+    adap_thresh_small = threshFilter(adap_thresh, 4)
+    if view:
+        # Display the updated threshold
+        axs[2, 1].imshow(adap_thresh_small, cmap='gray')
+        axs[2, 1].set_title('Adap. Threshold - Small contours')
+        axs[2, 1].axis('off')
+
+    thresh_processed_image = noiseReduce(image, thresh_small)
+    if view:
+        # Display the processed image
+        axs[3, 0].imshow(thresh_processed_image)
+        axs[3, 0].set_title('Fix. Processed Image')
+        axs[3, 0].axis('off')
+
+    adap_thresh_processed_image = noiseReduce(image, adap_thresh_small)
+    if view:
+        # Display the processed image
+        axs[3, 1].imshow(adap_thresh_processed_image)
+        axs[3, 1].set_title('Adap. Processed Image')
+        axs[3, 1].axis('off')
+
+    if view:
+        plt.tight_layout()
+        plt.savefig("contour.png")
+        exit()
+
+    return thresh_processed_image
+
+def threshFilter(thresh, max):
     # Find contours in the binary image
     contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-
 
     # Create an empty mask to store the noise
     thresh_small = thresh
 
     # Remove all contours >4 as these are not noise
     for contour in contours:
-        if cv2.contourArea(contour) > 4:
+        if cv2.contourArea(contour) > max:
             cv2.drawContours(thresh_small, [contour], -1, 0, thickness=cv2.FILLED)
 
-    # Display the updated threshold
-    axs[1, 1].imshow(thresh_small, cmap='gray')
-    axs[1, 1].set_title('Threshold - Small contours')
-    axs[1, 1].axis('off')
+    return thresh_small
 
-    noise_areas = thresh_small == 255
-
-    # Display the noise in the original image
-    axs[2, 0].imshow(noise_areas)
-    axs[2, 0].set_title('Threshold binary')
-    axs[2, 0].axis('off')
+def noiseReduce(image, thresh):
+    noise_areas = thresh == 255
 
     # Create a copy of the image to apply the selective blur
     processed_image = image.copy()
@@ -103,14 +148,6 @@ def contourRemoval(image, image_name: str):
         # Update the channel only where thresh_small indicates
         channel[noise_areas] = blurred_channel[noise_areas]
         processed_image[:,:,i] = channel
-
-    # Display the noise in the original image
-    axs[2, 1].imshow(processed_image)
-    axs[2, 1].set_title('Processed Image (Noise blurred)')
-    axs[2, 1].axis('off')
-
-    plt.tight_layout()
-    plt.savefig("contour.png")
 
     return processed_image
 
