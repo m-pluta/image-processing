@@ -14,10 +14,11 @@ def show_random_images(image_paths):
 
     for i, image_path in enumerate(random_paths):
         image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # image = getFourierImage(image_path)
 
         axes[i // GRID, i % GRID].imshow(image, cmap='gray')
-        # axes[i // GRID, i % GRID].set_title(image_file)
+        axes[i // GRID, i % GRID].set_title(image_path)
         axes[i // GRID, i % GRID].axis('off')
 
     plt.tight_layout()
@@ -28,16 +29,17 @@ def show_random_split_image_color(image_paths):
     # Select the random image
     random_path = random.choice(image_paths)
     image = cv2.imread(random_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     # Create empty matrices with zeros for each color channel image
-    blue_channel = np.zeros_like(image)
-    green_channel = np.zeros_like(image)
     red_channel = np.zeros_like(image)
+    green_channel = np.zeros_like(image)
+    blue_channel = np.zeros_like(image)
 
     # Assign the respective channel to each matrix.
-    blue_channel[:, :, 2] = image[:, :, 0]
+    red_channel[:, :, 0] = image[:, :, 0]
     green_channel[:, :, 1] = image[:, :, 1]
-    red_channel[:, :, 0] = image[:, :, 2]
+    blue_channel[:, :, 2] = image[:, :, 2]
 
     # Prepare the figure
     _, axes = plt.subplots(2, 2, figsize=(10, 10))
@@ -55,26 +57,17 @@ def show_random_split_image_color(image_paths):
     plt.savefig("split.png")
 
 def show_random_split_image_gray(image_paths):
-    # Ensure the random choice can be made.
-    if not image_paths:
-        print("The list of image paths is empty.")
-        return
-
     # Select a random image
     random_path = random.choice(image_paths)
     image = cv2.imread(random_path)
-
-    # Check if the image was successfully loaded
-    if image is None:
-        print(f"Failed to load image at {random_path}")
-        return
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     # Split the image into its channels
     channels = cv2.split(image)
 
     # Prepare the figure
     _, axes = plt.subplots(2, 2, figsize=(10, 10))
-    images = [image] + list(reversed(channels))
+    images = [image] + list(channels)
 
     titles = [random_path, 'Red Channel', 'Green Channel', 'Blue Channel']
 

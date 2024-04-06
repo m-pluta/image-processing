@@ -29,6 +29,9 @@ def measure(show_dist: bool = False, outpath: str = None):
         label = image_name[6]
         df.append({'label': label, 'pred': output, 'image': image_name})
 
+        if image_name[2:5] == "052":
+            print("Hard: " + str(output))
+
         if (output > 0.5):
             if (label == 'p'):
                 correct += 1
@@ -38,23 +41,23 @@ def measure(show_dist: bool = False, outpath: str = None):
 
     print(correct / len(image_names))
     df = pd.DataFrame(df)
-    
+
     # Show all wrong predictions
     pneumonia_low_pred = list(df[(df['label'] == 'p') & (df['pred'] < 0.5)]['image'])
     healthy_high_pred = list(df[(df['label'] == 'h') & (df['pred'] > 0.5)]['image'])
-    
+
     pneumonia_low_pred = [name[2:5] for name in pneumonia_low_pred]
     healthy_high_pred = [name[2:5] for name in healthy_high_pred]
-    
+
     print("Wrong pneumonia images")
     print(", ".join(pneumonia_low_pred))
     print("Wrong healthy images")
     print(", ".join(healthy_high_pred))
-    
+
 
     # Plotting a stacked histogram
     plt.figure(figsize=(6, 6))
-    
+
     # Filtering data based on the label
     df_p = df[df['label'] == 'p']['pred']
     df_h = df[df['label'] == 'h']['pred']
@@ -68,7 +71,7 @@ def measure(show_dist: bool = False, outpath: str = None):
     plt.title('Predictions')
     plt.xlabel('Prediction')
     plt.ylabel('Frequency')
-    plt.legend(loc='upper right')
+    plt.legend(loc='upper center')
     plt.grid(axis='y', alpha=0.75)
     plt.tight_layout()
 

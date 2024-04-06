@@ -8,14 +8,12 @@ from measure import *
 from perspective import *
 from blur import *
 from filter import *
-import time
 
 DEFAULT_IMAGE_DIR = 'image_processing_files/xray_images/'
 RESULT_DIR = 'Results/'
 
 def process_images(image_names: list[str], in_dir: str, out_dir: str):
-
-    for _, image_name in enumerate(image_names[2:]):
+    for _, image_name in enumerate(image_names):
         # Read in the image
         image_path = os.path.join(in_dir, image_name)
         image = cv2.imread(image_path)
@@ -38,13 +36,14 @@ def process_images(image_names: list[str], in_dir: str, out_dir: str):
     show_random_split_image_gray(full_image_paths)
 
 def contourRemoval(image, image_name: str):
-    view = False
+    view = True
     if view:
         # Setup for displaying the process
         _, axs = plt.subplots(4, 2, figsize=(6, 12))
 
         # Display the original coloured image
-        axs[0, 0].imshow(image)
+        colour = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        axs[0, 0].imshow(colour)
         axs[0, 0].set_title(f'Original ({image_name.split(".")[0]})')
         axs[0, 0].axis('off')
 
@@ -101,14 +100,14 @@ def contourRemoval(image, image_name: str):
     thresh_processed_image = noiseReduce(image, thresh_small)
     if view:
         # Display the processed image
-        axs[3, 0].imshow(thresh_processed_image)
+        axs[3, 0].imshow(cv2.cvtColor(thresh_processed_image, cv2.COLOR_BGR2RGB))
         axs[3, 0].set_title('Fix. Processed Image')
         axs[3, 0].axis('off')
 
     adap_thresh_processed_image = noiseReduce(image, adap_thresh_small)
     if view:
         # Display the processed image
-        axs[3, 1].imshow(adap_thresh_processed_image)
+        axs[3, 1].imshow(cv2.cvtColor(adap_thresh_processed_image, cv2.COLOR_BGR2RGB))
         axs[3, 1].set_title('Adap. Processed Image')
         axs[3, 1].axis('off')
 
