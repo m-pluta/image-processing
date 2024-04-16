@@ -29,9 +29,6 @@ def measure(show_dist: bool = False, outpath: str = None):
         label = image_name[6]
         df.append({'label': label, 'pred': output, 'image': image_name})
 
-        if image_name[2:5] == "052":
-            print("Hard: " + str(output))
-
         if (output > 0.5):
             if (label == 'p'):
                 correct += 1

@@ -1,9 +1,116 @@
+import pprint
+import numpy as np
+from blur import *
 import cv2
 import matplotlib.pyplot as plt
 
 
-def contourRemoval(image, image_name: str):
-    view = True
+def rgb(image):
+    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+
+def show(image, ax, title):
+    ax.imshow(image, cmap='gray')
+    ax.set_title(title)
+    ax.axis('off')
+
+
+def contourRemoval(image, image_name, view=False):
+    b, g, r = cv2.split(image)
+
+    if view:
+        # Setup for displaying the process
+        _, axes = plt.subplots(4, 3, figsize=(9, 12))
+
+        # Display the original coloured image
+        show(rgb(image), axes[0, 1], f'Original ({image_name.split(".")[0]})')
+    if view:
+        show(b, axes[1, 0], 'Blue')
+        show(g, axes[1, 1], 'Green')
+        show(r, axes[1, 2], 'Red')
+
+    b = cv2.fastNlMeansDenoising(
+        src=b,
+        h=15,
+        templateWindowSize=7,
+        searchWindowSize=21
+    )
+    if view:
+        show(b, axes[2, 0], "Blue Denoised")
+
+    thresh_g = cv2.adaptiveThreshold(
+        g,                  # Source image
+        255,                # MaxVal: The maximum intensity for the white color
+        cv2.ADAPTIVE_THRESH_MEAN_C,  # Adaptive method: Mean or Gaussian
+        cv2.THRESH_BINARY,  # Threshold type
+        11,                 # Block size: Size of the neighborhood area used to calculate the threshold for each pixel
+        50                  # C: Constant subtracted from the calculated mean or weighted mean
+    )
+    thresh_g = 255 - thresh_g
+    thresh_g = threshFilter(thresh_g, 12)
+
+    thresh_g = gaussian_blur(thresh_g, 5)
+
+    if view:
+        show(thresh_g, axes[2, 1], "Green Threshold")
+
+    g = g.astype(np.uint16) + thresh_g.astype(np.uint16)
+
+    g[g > 255] = 255
+    g = g.astype(np.uint8)
+
+    g = cv2.fastNlMeansDenoising(
+        src=g,
+        h=15,
+        templateWindowSize=7,
+        searchWindowSize=21
+    )
+
+    if view:
+        show(g, axes[3, 1], "Green Denoised")
+
+    thresh_r = cv2.adaptiveThreshold(
+        r,                  # Source image
+        255,                # MaxVal: The maximum intensity for the white color
+        cv2.ADAPTIVE_THRESH_MEAN_C,  # Adaptive method: Mean or Gaussian
+        cv2.THRESH_BINARY,  # Threshold type
+        11,                 # Block size: Size of the neighborhood area used to calculate the threshold for each pixel
+        50                  # C: Constant subtracted from the calculated mean or weighted mean
+    )
+    thresh_r = 255 - thresh_r
+    thresh_r = threshFilter(thresh_r, 5)
+
+    thresh_r = gaussian_blur(thresh_r, 5)
+
+    if view:
+        show(thresh_r, axes[2, 2], "Red Threshold")
+
+    r = r.astype(np.uint16) + thresh_r.astype(np.uint16)
+
+    r[r > 255] = 255
+    r = r.astype(np.uint8)
+
+    r = cv2.fastNlMeansDenoising(
+        src=r,
+        h=15,
+        templateWindowSize=7,
+        searchWindowSize=21
+    )
+
+    if view:
+        show(r, axes[3, 2], "Red Denoised")
+
+    if view:
+        plt.tight_layout()
+        plt.savefig("dev/contour.png")
+        exit()
+
+    processed_image = cv2.merge((b, g, r))
+
+    return processed_image
+
+
+def contourRemovalOld(image, image_name: str, view=False):
     if view:
         # Setup for displaying the process
         _, axs = plt.subplots(4, 2, figsize=(6, 12))
@@ -78,7 +185,7 @@ def contourRemoval(image, image_name: str):
 
     if view:
         plt.tight_layout()
-        plt.savefig("contour.png")
+        plt.savefig("dev/contour.png")
         exit()
 
     return thresh_processed_image

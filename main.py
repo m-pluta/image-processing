@@ -23,12 +23,12 @@ def process_images(image_names: list[str], in_dir: str, out_dir: str):
         # Processing images
         corners = get_image_corners(image)
         image = perspective_correction(image, corners, 0)
-        image = contourRemoval(image, image_name)
+        image = contourRemoval(image, image_name, False)
         # image = equalizeHist(image)
         # image = bilateral_blur(image)
         # image = N1_means_blur(image)
 
-        # Save the image
+        # Save the imagew
         output_path = os.path.join(out_dir, image_name)
         cv2.imwrite(output_path, image)
 
@@ -51,4 +51,4 @@ if __name__ == '__main__':
 
     # Call main routine and measure the quality
     process_images(images, image_dir, RESULT_DIR)
-    measure(show_dist=False, outpath="dist.png")
+    measure(show_dist=False, outpath="dev/dist.png")

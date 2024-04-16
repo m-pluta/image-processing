@@ -5,7 +5,7 @@ def median_blur(image, ksize=13):
     return cv2.medianBlur(src=image, ksize=ksize)
 
 
-def N1_means_blur(image):
+def Nl_means_blur(image):
     return cv2.fastNlMeansDenoisingColored(
         src=image,
         dst=None,

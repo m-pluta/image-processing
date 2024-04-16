@@ -22,7 +22,7 @@ def show_random_images(image_paths):
         axes[i // GRID, i % GRID].axis('off')
 
     plt.tight_layout()
-    plt.savefig("view.png")
+    plt.savefig("dev/view.png")
 
 
 def show_random_split_image_color(image_paths):
@@ -55,7 +55,7 @@ def show_random_split_image_color(image_paths):
         ax.axis('off')
 
     plt.tight_layout()
-    plt.savefig("split.png")
+    plt.savefig("dev/split.png")
 
 
 def show_random_split_image_gray(image_paths):
@@ -83,4 +83,4 @@ def show_random_split_image_gray(image_paths):
         ax.set_title(titles[i])
 
     plt.tight_layout()
-    plt.savefig("split.png")
+    plt.savefig("dev/split.png")
