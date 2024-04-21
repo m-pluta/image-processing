@@ -2,18 +2,17 @@ import os
 import sys
 import cv2
 
-from color import *
 from detect_circle import detect_circle
+from inpaint import inpaint
 from util import *
 from measure import *
 from perspective import *
 from blur import *
 from filter import *
 from noise import *
-from noise_old import *
-from Inpainter import inpaint
 
-DEFAULT_IMAGE_DIR = 'image_processing_files/xray_images/'
+# DEFAULT_IMAGE_DIR = 'image_processing_files/xray_images/'
+DEFAULT_IMAGE_DIR = 'temp/'
 RESULT_DIR = 'Results/'
 
 
@@ -24,16 +23,16 @@ def process_images(image_names: list[str], in_dir: str, out_dir: str):
         image_path = os.path.join(in_dir, image_name)
         image = original = cv2.imread(image_path)
 
-        # Perspective Correction
-        corners = detect_corners(image)
-        image = perspective_correction(image, corners, 0)
+        # # Perspective Correction
+        # corners = detect_corners(image)
+        # image = perspective_correction(image, corners, 0)
 
         # # Inpainting
-        circle = detect_circle(image)
-        image = inpaint(image, circle.astype(np.uint8) * 255)
+        # circle = detect_circle(image)
+        # image = inpaint(image, circle.astype(np.uint8) * 255)
 
         # Noise detection/thresholding
-        image = remove_noise(image, image_name, circle, False)
+        image = remove_noise(image, image_name, True)
 
         # Colour and Contrast Adjustment
 

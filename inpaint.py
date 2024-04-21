@@ -77,13 +77,13 @@ class Inpainter():
             self.computeConfidence()
             self.computeData()
             self.computeTarget()
-            print('Computing bestpatch', time.asctime())
+            # print('Computing bestpatch', time.asctime())
             self.computeBestPatch()
             self.updateMats()
             stay = self.checkEnd()
 
-            cv2.imwrite("updatedMask.jpg", self.updatedMask)
-            cv2.imwrite("workImage.jpg", self.workImage)
+            # cv2.imwrite("updatedMask.jpg", self.updatedMask)
+            # cv2.imwrite("workImage.jpg", self.workImage)
 
         self.result = np.copy(self.workImage)
         # cv2.imshow("Confidence", self.confidence)

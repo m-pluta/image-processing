@@ -1,4 +1,3 @@
-import pprint
 import numpy as np
 from blur import *
 import cv2
@@ -19,7 +18,7 @@ def show(image, ax, title):
     ax.axis('off')
 
 
-def remove_noise(image, image_name, circle, view=True):
+def remove_noise(image, image_name, view=True):
     # Setup for displaying the process
     if view:
         _, axes = plt.subplots(4, 4, figsize=(12, 12))
@@ -31,12 +30,12 @@ def remove_noise(image, image_name, circle, view=True):
 
     # Identify definite pepper noise
     median_image = cv2.medianBlur(image, ksize=15)
-    pepper = threshFilter(gray_image < 130, 8) & ~circle
+    pepper = threshFilter(gray_image < 130, 8)
     processed_image[pepper] = median_image[pepper]
 
     # Identify potential pepper noise
     median_image = cv2.medianBlur(image, ksize=5)
-    maybe_pepper = threshFilter((gray_image < 160) & ~pepper, 12) & ~circle
+    maybe_pepper = threshFilter((gray_image < 160) & ~pepper, 12)
     processed_image[maybe_pepper] = median_image[maybe_pepper]
 
     if view:
