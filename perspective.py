@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def get_image_corners(image):
+def detect_corners(image):
     # Convert to gray-scale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -31,7 +31,7 @@ def perspective_correction(image, corners, delta=0):
     # Define the destination position
     destination = np.array([
         [255 - delta, + delta],
-        [+ delta, + delta],
+        [-1 + delta, -1 + delta],
         [+ delta, 255 - delta],
         [255 - delta, 255 - delta],
     ], dtype="float32")
@@ -48,7 +48,7 @@ def perspective_correction(image, corners, delta=0):
 
 def drawBorders(image):
     # Get the corners of the image
-    corners = get_image_corners(image)
+    corners = detect_corners(image)
 
     # Draw the borders onto the image
     cv2.drawContours(image, [corners], -1, (0, 255, 0), 1)
