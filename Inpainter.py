@@ -151,6 +151,7 @@ class Inpainter():
 
         del self.fillFront[:]
         del self.normals[:]
+
         height, width = boundryMat.shape[:2]
         for y in range(height):
             for x in range(width):
@@ -261,8 +262,9 @@ class Inpainter():
             patchError = 0
             meanR = meanG = meanB = 0
 
-            skipPatch = False
+            # alpha * patchError / countedNum <= minError
             thresh = minError * countedNum / alpha
+            skipPatch = False
 
             for (i, j) in self.targetPatchSList:
                 sourcePixel = workImage[y+i][x+j]
@@ -287,26 +289,25 @@ class Inpainter():
             meanG /= countedNum
             meanB /= countedNum
 
-            if alpha * patchError <= minError:
-                patchVariance = 0
+            patchVariance = 0
 
-                for (i, j) in self.targetPatchTList:
-                    sourcePixel = workImage[y+i][x+j]
-                    difference = sourcePixel[0] - meanR
-                    patchVariance += math.pow(difference, 2)
-                    difference = sourcePixel[1] - meanG
-                    patchVariance += math.pow(difference, 2)
-                    difference = sourcePixel[2] - meanB
-                    patchVariance += math.pow(difference, 2)
+            for (i, j) in self.targetPatchTList:
+                sourcePixel = workImage[y+i][x+j]
+                difference = sourcePixel[0] - meanR
+                patchVariance += math.pow(difference, 2)
+                difference = sourcePixel[1] - meanG
+                patchVariance += math.pow(difference, 2)
+                difference = sourcePixel[2] - meanB
+                patchVariance += math.pow(difference, 2)
 
-                # Use alpha & Beta to encourage path with less patch variance.
-                # For situations in which you need little variance.
-                # Alpha = Beta = 1 to disable.
-                if patchError < alpha * minError or patchVariance < beta * bestPatchVariance:
-                    bestPatchVariance = patchVariance
-                    minError = patchError
-                    self.bestMatchUpperLeft = (x, y)
-                    self.bestMatchLowerRight = (x+pWidth-1, y+pHeight-1)
+            # Use alpha & Beta to encourage path with less patch variance.
+            # For situations in which you need little variance.
+            # Alpha = Beta = 1 to disable.
+            if patchError < alpha * minError or patchVariance < beta * bestPatchVariance:
+                bestPatchVariance = patchVariance
+                minError = patchError
+                self.bestMatchUpperLeft = (x, y)
+                self.bestMatchLowerRight = (x+pWidth-1, y+pHeight-1)
 
     @profile
     def updateMats(self):
