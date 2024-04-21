@@ -3,7 +3,6 @@ import math
 import time
 import cv2
 import numpy as np
-import numba as nb
 from line_profiler import profile
 
 
@@ -68,7 +67,6 @@ class Inpainter():
         return self.CHECK_VALID
 
     @profile
-    @nb.jit(forceobj=True)
     def inpaint(self):
         self.initializeMats()
         self.calculateGradients()
