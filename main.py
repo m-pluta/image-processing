@@ -22,7 +22,7 @@ def process_images(image_names: list[str], in_dir: str, out_dir: str):
     for _, image_name in enumerate(image_names):
         # Read in the image
         image_path = os.path.join(in_dir, image_name)
-        image = cv2.imread(image_path)
+        image = original = cv2.imread(image_path)
 
         # Perspective Correction
         corners = detect_corners(image)
@@ -33,13 +33,16 @@ def process_images(image_names: list[str], in_dir: str, out_dir: str):
         image = inpaint(image, circle.astype(np.uint8) * 255)
 
         # Noise detection/thresholding
-        # image = remove_noise(image, image_name, circle)
+        image = remove_noise(image, image_name, circle, False)
 
         # Colour and Contrast Adjustment
 
+        eval(original, image, image_name)
+
         # Save the images
-        output_path = os.path.join("temp", image_name)
+        output_path = os.path.join(RESULT_DIR, image_name)
         cv2.imwrite(output_path, image)
+        exit()
 
     # Get full paths
     full_image_paths = [os.path.join(out_dir, image_name)

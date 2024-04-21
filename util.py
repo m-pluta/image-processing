@@ -1,4 +1,5 @@
 import cv2
+from skimage.metrics import structural_similarity as SSIM
 import random
 import matplotlib.pyplot as plt
 import numpy as np
@@ -84,3 +85,39 @@ def show_random_split_image_gray(image_paths):
 
     plt.tight_layout()
     plt.savefig("dev/split.png")
+
+
+def eval(original, image, image_name):
+    # Calculate PSNR
+    psnr_value = cv2.PSNR(original, image)
+
+    # Convert images to grayscale (if necessary)
+    noisy_image_gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    denoised_image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Calculate SSIM
+    ssim_value = SSIM(noisy_image_gray, denoised_image_gray)
+
+    # Calculate MSE
+    mse = np.mean((original - image) ** 2)
+
+    # Calculate MAE
+    mae = np.mean(np.abs(original - image))
+
+    # Calculate RMSE
+    rmse = np.sqrt(mse)
+
+    # Calculate entropy
+    _, noisy_entropy = cv2.meanStdDev(noisy_image_gray)
+    _, denoised_entropy = cv2.meanStdDev(denoised_image_gray)
+
+    print(f"Evaluation Metrics - {image_name}")
+    print("PSNR:", psnr_value)
+    print("SSIM:", ssim_value)
+    print("MSE:", mse)
+    print("MAE:", mae)
+    print("RMSE:", rmse)
+    print("Noisy Image Entropy:", noisy_entropy[0][0])
+    print("Denoised Image Entropy:", denoised_entropy[0][0])
+
+    pass
