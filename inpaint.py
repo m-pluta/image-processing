@@ -7,20 +7,23 @@ from line_profiler import profile
 
 
 class Inpainter():
-    DEFAULT_HALF_PATCH_WIDTH = 3
+    # Inpainter settings
+    DEFAULT_HALF_PATCH_WIDTH = 4
     MODE_ADDITION = 0
     MODE_MULTIPLICATION = 1
 
+    # Input validation
     ERROR_INPUT_MAT_INVALID_TYPE = 0
     ERROR_INPUT_MASK_INVALID_TYPE = 1
     ERROR_MASK_INPUT_SIZE_MISMATCH = 2
     ERROR_HALF_PATCH_WIDTH_ZERO = 3
     CHECK_VALID = 4
 
+    # Inpainter variables
     inputImage = None
-    mask = updatedMask = None
+    mask = None
     result = None
-    workImage = None
+    image = None
     sourceRegion = None
     targetRegion = None
     originalSourceRegion = None
@@ -29,29 +32,30 @@ class Inpainter():
     confidence = None
     data = None
     LAPLACIAN_KERNEL = NORMAL_KERNELX = NORMAL_KERNELY = None
+
     # cv::Point2i
     bestMatchUpperLeft = bestMatchLowerRight = None
     patchHeight = patchWidth = 0
+
     # std::vector<cv::Point> -> list[(y,x)]
     fillFront = []
+
     # std::vector<cv::Point2f>
     normals = []
     sourcePatchULList = []
     targetPatchSList = []
     targetPatchTList = []
-    mode = None
     halfPatchWidth = None
     targetIndex = None
 
     @profile
-    def __init__(self, inputImage, mask, halfPatchWidth=4, mode=1):
+    def __init__(self, inputImage, mask, halfPatchWidth=DEFAULT_HALF_PATCH_WIDTH):
         self.inputImage = np.copy(inputImage)
         self.mask = np.copy(mask)
-        self.updatedMask = np.copy(mask)
-        self.workImage = np.copy(inputImage)
+        self.mask = np.copy(mask)
+        self.image = np.copy(inputImage)
         self.result = np.ndarray(
             shape=inputImage.shape, dtype=inputImage.dtype)
-        self.mode = mode
         self.halfPatchWidth = halfPatchWidth
 
     @profile
@@ -70,25 +74,24 @@ class Inpainter():
     def inpaint(self):
         self.initializeMats()
         self.calculateGradients()
-        stay = True
 
-        while stay:
+        while True:
             self.computeFillFront()
             self.computeConfidence()
             self.computeData()
             self.computeTarget()
-            # print('Computing bestpatch', time.asctime())
+
+            print('Computing bestpatch', time.asctime())
             self.computeBestPatch()
             self.updateMats()
-            stay = self.checkEnd()
 
             # cv2.imwrite("updatedMask.jpg", self.updatedMask)
-            # cv2.imwrite("workImage.jpg", self.workImage)
+            cv2.imwrite("workImage.jpg", self.image)
 
-        self.result = np.copy(self.workImage)
-        # cv2.imshow("Confidence", self.confidence)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
+            if self.checkEnd():
+                break
+
+        self.result = np.copy(self.image)
 
     @profile
     def initializeMats(self):
@@ -97,8 +100,7 @@ class Inpainter():
         _, self.confidence = cv2.threshold(
             self.confidence, 2, 1, cv2.THRESH_BINARY_INV)
 
-        self.sourceRegion = np.copy(self.confidence)
-        self.sourceRegion = np.uint8(self.sourceRegion)  # dtype = np.uint8
+        self.sourceRegion = np.uint8(np.copy(self.confidence))
         self.originalSourceRegion = np.copy(self.sourceRegion)
 
         self.confidence = np.float32(self.confidence)
@@ -108,19 +110,20 @@ class Inpainter():
         _, self.targetRegion = cv2.threshold(
             self.targetRegion, 2, 1, cv2.THRESH_BINARY)
         self.targetRegion = np.uint8(self.targetRegion)
+
         self.data = np.ndarray(
             shape=self.inputImage.shape[:2],  dtype=np.float32)
 
-        self.LAPLACIAN_KERNEL = np.ones((3, 3), dtype=np.float32)
-        self.LAPLACIAN_KERNEL[1, 1] = -8
-        self.NORMAL_KERNELX = np.zeros((3, 3), dtype=np.float32)
-        self.NORMAL_KERNELX[1, 0] = -1
-        self.NORMAL_KERNELX[1, 2] = 1
-        self.NORMAL_KERNELY = cv2.transpose(self.NORMAL_KERNELX)
+        # Initialise kernels
+        self.LAPLACIAN_KERNEL = np.array(
+            [[1, 1, 1], [1, -8, 1], [1, 1, 1]], dtype=np.float32)
+        self.NORMAL_KERNELX = np.array(
+            [[0, 0, 0], [-1, 0, 1], [0, 0, 0]], dtype=np.float32)
+        self.NORMAL_KERNELY = self.NORMAL_KERNELX.T
 
     @profile
     def calculateGradients(self):
-        srcGray = cv2.cvtColor(self.workImage, cv2.COLOR_BGR2GRAY)
+        srcGray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
 
         self.gradientX = cv2.Scharr(srcGray, cv2.CV_32F, 1, 0)
         self.gradientX = cv2.convertScaleAbs(self.gradientX)
@@ -138,37 +141,41 @@ class Inpainter():
 
     @profile
     def computeFillFront(self):
-        # elements of boundryMat, whose value > 0 are neighbour pixels of target region.
-        boundryMat = cv2.filter2D(
+        # Apply a Laplacian filter to find the boundary in the target region
+        boundaryMat = cv2.filter2D(
             self.targetRegion, cv2.CV_32F, self.LAPLACIAN_KERNEL)
 
+        # Apply normal kernels to the source region to find gradients
         sourceGradientX = cv2.filter2D(
             self.sourceRegion, cv2.CV_32F, self.NORMAL_KERNELX)
         sourceGradientY = cv2.filter2D(
             self.sourceRegion, cv2.CV_32F, self.NORMAL_KERNELY)
 
-        del self.fillFront[:]
-        del self.normals[:]
+        # Find coordinates where boundaryMat is greater than zero, i.e. the contour
+        y_indices, x_indices = np.where(boundaryMat > 0)
 
-        height, width = boundryMat.shape[:2]
-        for y in range(height):
-            for x in range(width):
-                if boundryMat[y, x] > 0:
-                    self.fillFront.append((x, y))
-                    dx = sourceGradientX[y, x]
-                    dy = sourceGradientY[y, x]
+        # Extract the gradient values at these coordinates
+        dx = sourceGradientX[y_indices, x_indices]
+        dy = sourceGradientY[y_indices, x_indices]
 
-                    normalX, normalY = dy, - dx
-                    tempF = np.sqrt(normalX ** 2 + normalY ** 2)
-                    if tempF != 0:
-                        normalX /= tempF
-                        normalY /= tempF
-                    self.normals.append((normalX, normalY))
+        # Calculate normals and norms of normals
+        normalX = dy
+        normalY = -dx
+        magnitude = np.sqrt(normalX**2 + normalY**2)
+
+        # Normalize the normals
+        nonzero = magnitude > 0
+        normalX[nonzero] /= magnitude[nonzero]
+        normalY[nonzero] /= magnitude[nonzero]
+
+        # Store the coordinates of the fill front and the calculated normals
+        self.fillFront = list(zip(x_indices, y_indices))
+        self.normals = list(zip(normalX, normalY))
 
     @profile
     def getPatch(self, point):
         centerX, centerY = point
-        height, width = self.workImage.shape[:2]
+        height, width = self.image.shape[:2]
 
         minX = max(centerX - self.halfPatchWidth, 0)
         minY = max(centerY - self.halfPatchWidth, 0)
@@ -183,154 +190,144 @@ class Inpainter():
 
     @profile
     def computeConfidence(self):
-        for p in self.fillFront:
-            pX, pY = p
-            (aX, aY), (bX, bY) = self.getPatch(p)
-            total = 0
-            for y in range(aY, bY + 1):
-                for x in range(aX, bX + 1):
-                    if self.targetRegion[y, x] == 0:
-                        total += self.confidence[y, x]
-            self.confidence[pY, pX] = total / ((bX-aX+1) * (bY-aY+1))
+        for pX, pY in self.fillFront:
+            (aX, aY), (bX, bY) = self.getPatch((pX, pY))
+
+            # Extract the patch from the targetRegion and confidence arrays
+            patch_targetRegion = self.targetRegion[aY:bY+1, aX:bX+1]
+            patch_confidence = self.confidence[aY:bY+1, aX:bX+1]
+
+            # Compute the sum of confidence values where the targetRegion is 0 (non-target areas)
+            total = np.sum(patch_confidence[patch_targetRegion == 0])
+
+            # Calculate the total number of pixels in the patch
+            total_pixels = (bX - aX + 1) * (bY - aY + 1)
+
+            # Update the confidence at point (pX, pY) based on the total number of pixels in the patch
+            self.confidence[pY, pX] = total / total_pixels
 
     @profile
     def computeData(self):
-        for i in range(len(self.fillFront)):
-            x, y = self.fillFront[i]
-            currentNormalX, currentNormalY = self.normals[i]
-            self.data[y, x] = math.fabs(
+        for (x, y), (currentNormalX, currentNormalY) in zip(self.fillFront, self.normals):
+            self.data[y, x] = abs(
                 self.gradientX[y, x] * currentNormalX + self.gradientY[y, x] * currentNormalY) + 0.001
 
     @profile
     def computeTarget(self):
-        self.targetIndex = 0
-        maxPriority, priority = 0, 0
         omega, alpha, beta = 0.7, 0.2, 0.8
-        for i in range(len(self.fillFront)):
-            x, y = self.fillFront[i]
-            # Way 1
-            # priority = self.data[y, x] * self.confidence[y, x]
-            # Way 2
-            Rcp = (1-omega) * self.confidence[y, x] + omega
-            priority = alpha * Rcp + beta * self.data[y, x]
+        self.targetIndex = 0
 
-            if priority > maxPriority:
-                maxPriority = priority
-                self.targetIndex = i
+        # Assuming fillFront is a list of tuples, we convert relevant parts of confidence and data to arrays
+        fillfront_indices = np.array(self.fillFront)
+
+        indices = fillfront_indices[:, 1], fillfront_indices[:, 0]
+
+        # Vectorized calculation of Rcp and priority for all points in fillFront
+        Rcp = (1 - omega) * self.confidence[indices] + omega
+        priorities = alpha * Rcp + beta * self.data[indices]
+
+        # Way 2
+        # priorities = self.data[indices] * self.confidence[indices]
+
+        # Find the index of the maximum priority
+        self.targetIndex = np.argmax(priorities)
 
     @profile
     def computeBestPatch(self):
-        minError = bestPatchVariance = sys.maxsize
         currentPoint = self.fillFront[self.targetIndex]
         (aX, aY), (bX, bY) = self.getPatch(currentPoint)
         pHeight, pWidth = bY - aY + 1, bX - aX + 1
-        height, width = self.workImage.shape[:2]
-        workImage = self.workImage.tolist()
 
         if pHeight != self.patchHeight or pWidth != self.patchWidth:
-            # print ('patch size changed.')
             self.patchHeight, self.patchWidth = pHeight, pWidth
-            area = pHeight * pWidth
+
             SUM_KERNEL = np.ones((pHeight, pWidth), dtype=np.uint8)
             convolvedMat = cv2.filter2D(
                 self.originalSourceRegion, cv2.CV_8U, SUM_KERNEL, anchor=(0, 0))
-            self.sourcePatchULList = []
 
             # sourcePatchULList: list whose elements is possible to be the UpperLeft of an patch to reference.
-            for y in range(height - pHeight):
-                for x in range(width - pWidth):
-                    if convolvedMat[y, x] == area:
-                        self.sourcePatchULList.append((y, x))
+            area = pHeight * pWidth
+            self.sourcePatchULList = np.argwhere(
+                convolvedMat[:-pHeight, :-pWidth] == area)
 
-        self.targetPatchSList = []
-        self.targetPatchTList = []
+        sourceRegion = self.sourceRegion[aY:aY + pHeight + 1,
+                                         aX:aX + pWidth + 1]
 
-        # targetPatchSList & targetPatchTList: list whose elements are the coordinates of  origin/toInpaint pixels.
-        for i in range(pHeight):
-            for j in range(pWidth):
-                if self.sourceRegion[aY+i, aX+j] == 1:
-                    self.targetPatchSList.append((i, j))
-                else:
-                    self.targetPatchTList.append((i, j))
+        source_pixels = sourceRegion == 1
 
+        self.targetPatchSList = np.argwhere(source_pixels)
+        self.targetPatchTList = np.argwhere(~source_pixels)
+
+        # Pre-compute values
         countedNum = float(len(self.targetPatchSList))
+        minError = bestPatchVariance = sys.maxsize
+        alpha, beta = 0.9, 0.5
+        image_float32 = np.float32(self.image)
 
         for (y, x) in self.sourcePatchULList:
-            alpha, beta = 0.9, 0.5
-            patchError = 0
-            meanR = meanG = meanB = 0
 
-            # alpha * patchError / countedNum <= minError
-            thresh = minError * countedNum / alpha
-            skipPatch = False
+            i_indices = self.targetPatchSList[:, 0]
+            j_indices = self.targetPatchSList[:, 1]
 
-            for (i, j) in self.targetPatchSList:
-                sourcePixel = workImage[y+i][x+j]
-                targetPixel = workImage[aY+i][aX+j]
+            source_pixels = image_float32[i_indices + y, j_indices + x]
+            target_pixels = image_float32[i_indices + aY, j_indices + aX]
 
-                for c in range(3):
-                    difference = float(sourcePixel[c]) - float(targetPixel[c])
-                    patchError += difference ** 2
-                meanR += sourcePixel[0]
-                meanG += sourcePixel[1]
-                meanB += sourcePixel[2]
+            differences = source_pixels - target_pixels
 
-                if patchError > thresh:
-                    skipPatch = True
-                    break
+            patchError = np.sum(differences ** 2) / countedNum
 
-            if skipPatch:
-                continue
+            if alpha * patchError <= minError:
+                i_indices = self.targetPatchTList[:, 0]
+                j_indices = self.targetPatchTList[:, 1]
+                sourcePixels = self.image[i_indices + y, j_indices + x, :]
 
-            patchError /= countedNum
-            meanR /= countedNum
-            meanG /= countedNum
-            meanB /= countedNum
+                meanRGB = np.mean(sourcePixels, axis=0)
+                difference = sourcePixels - meanRGB
+                patchVariance = np.sum(difference ** 2)
 
-            patchVariance = 0
-
-            for (i, j) in self.targetPatchTList:
-                sourcePixel = workImage[y+i][x+j]
-                difference = sourcePixel[0] - meanR
-                patchVariance += math.pow(difference, 2)
-                difference = sourcePixel[1] - meanG
-                patchVariance += math.pow(difference, 2)
-                difference = sourcePixel[2] - meanB
-                patchVariance += math.pow(difference, 2)
-
-            # Use alpha & Beta to encourage path with less patch variance.
-            # For situations in which you need little variance.
-            # Alpha = Beta = 1 to disable.
-            if patchError < alpha * minError or patchVariance < beta * bestPatchVariance:
-                bestPatchVariance = patchVariance
-                minError = patchError
-                self.bestMatchUpperLeft = (x, y)
-                self.bestMatchLowerRight = (x+pWidth-1, y+pHeight-1)
+                # Use alpha & Beta to encourage path with less patch variance.
+                # For situations in which you need little variance.
+                # Alpha = Beta = 1 to disable.
+                if patchError < alpha * minError or patchVariance < beta * bestPatchVariance:
+                    bestPatchVariance = patchVariance
+                    minError = patchError
+                    self.bestMatchUpperLeft = (x, y)
+                    self.bestMatchLowerRight = (
+                        x + pWidth - 1, y + pHeight - 1)
 
     @profile
     def updateMats(self):
         targetPoint = self.fillFront[self.targetIndex]
         tX, tY = targetPoint
-        (aX, aY), (bX, bY) = self.getPatch(targetPoint)
+        (aX, aY), _ = self.getPatch(targetPoint)
         bulX, bulY = self.bestMatchUpperLeft
-        pHeight, pWidth = bY-aY+1, bX-aX+1
 
-        for (i, j) in self.targetPatchTList:
-            self.workImage[aY+i, aX+j] = self.workImage[bulY+i, bulX+j]
-            self.gradientX[aY+i, aX+j] = self.gradientX[bulY+i, bulX+j]
-            self.gradientY[aY+i, aX+j] = self.gradientY[bulY+i, bulX+j]
-            self.confidence[aY+i, aX+j] = self.confidence[tY, tX]
-            self.sourceRegion[aY+i, aX+j] = 1
-            self.targetRegion[aY+i, aX+j] = 0
-            self.updatedMask[aY+i, aX+j] = 0
+        # Convert list of tuples to a NumPy array and get i and j arrays
+        indices = np.array(self.targetPatchTList)
+        i_array, j_array = indices[:, 0], indices[:, 1]
+
+        # Compute coordinates of offset source and target indices
+        source_indices = (bulY + i_array, bulX + j_array)
+        target_indices = (aY + i_array, aX + j_array)
+
+        # Update workImage, gradients, and confidence
+        self.image[target_indices] = self.image[source_indices]
+        self.gradientX[target_indices] = self.gradientX[source_indices]
+        self.gradientY[target_indices] = self.gradientY[source_indices]
+        self.confidence[target_indices] = self.confidence[tY, tX]
+
+        # Update source and target regions, and the mask
+        self.sourceRegion[target_indices] = 1
+        self.targetRegion[target_indices] = 0
+        self.mask[target_indices] = 0
 
     @profile
     def checkEnd(self):
-        return np.any(self.sourceRegion == 0)
+        return np.all(self.sourceRegion != 0)
 
 
 @profile
-def inpaint(image, mask, patch_width=4):
+def inpaint(image, mask, patch_width=Inpainter.DEFAULT_HALF_PATCH_WIDTH):
     i = Inpainter(image, mask, patch_width)
     i.inpaint()
     return i.result

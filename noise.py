@@ -55,9 +55,13 @@ def remove_noise(image, image_name, view=True):
         show(g, axes[2, 1], 'Green')
         show(r, axes[2, 2], 'Red')
 
-    b_denoised = cv2.medianBlur(b, ksize=5)
-    g_denoised = cv2.medianBlur(g, ksize=5)
-    r_denoised = cv2.medianBlur(r, ksize=5)
+    b_denoised = cv2.fastNlMeansDenoising(b, h=10, templateWindowSize=7, searchWindowSize=21)
+    g_denoised = cv2.fastNlMeansDenoising(g, h=20, templateWindowSize=7, searchWindowSize=21)
+    r_denoised = cv2.fastNlMeansDenoising(r, h=20, templateWindowSize=7, searchWindowSize=21)
+    
+    # b_denoised = cv2.medianBlur(b, ksize=5)
+    # g_denoised = cv2.medianBlur(g, ksize=5)
+    # r_denoised = cv2.medianBlur(r, ksize=5)
 
     denoised_image = cv2.merge([b_denoised, g_denoised, r_denoised])
 
