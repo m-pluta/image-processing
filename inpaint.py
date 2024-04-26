@@ -17,10 +17,9 @@ class Inpainter():
     CHECK_VALID = 4
 
     # Inpainter variables
-    inputImage = None
+    image = None
     mask = None
     result = None
-    image = None
     sourceRegion = None
     targetRegion = None
     originalSourceRegion = None
@@ -46,21 +45,18 @@ class Inpainter():
     targetIndex = None
 
     @profile
-    def __init__(self, inputImage, mask, halfPatchWidth=DEFAULT_HALF_PATCH_WIDTH):
-        self.inputImage = np.copy(inputImage)
+    def __init__(self, image, mask, halfPatchWidth=DEFAULT_HALF_PATCH_WIDTH):
+        self.image = np.copy(image)
         self.mask = np.copy(mask)
-        self.image = np.copy(inputImage)
-        self.result = np.ndarray(
-            shape=inputImage.shape, dtype=inputImage.dtype)
         self.halfPatchWidth = halfPatchWidth
 
     @profile
     def checkValidInputs(self):
-        if not self.inputImage.dtype == np.uint8:  # CV_8UC3
+        if not self.image.dtype == np.uint8:  # CV_8UC3
             return self.ERROR_INPUT_MAT_INVALID_TYPE
-        if not self.mask.dtype == np.uint8:  # CV_8UC1
+        if not self.mask.dtype == bool:  # boolean mask
             return self.ERROR_INPUT_MASK_INVALID_TYPE
-        if not self.mask.shape == self.inputImage.shape[:2]:  # CV_ARE_SIZES_EQ
+        if not self.mask.shape == self.image.shape[:2]:  # CV_ARE_SIZES_EQ
             return self.ERROR_MASK_INPUT_SIZE_MISMATCH
         if self.halfPatchWidth == 0:
             return self.ERROR_HALF_PATCH_WIDTH_ZERO
@@ -82,7 +78,7 @@ class Inpainter():
             self.computeBestPatch()
             self.updateMats()
             if debug:
-                cv2.imwrite("updatedMask.jpg", self.mask)
+                cv2.imwrite("updatedMask.jpg", self.mask.astype(np.uint8))
                 workImage = cv2.cvtColor(self.image, cv2.COLOR_YCrCb2BGR)
                 cv2.imwrite("workImage.jpg", workImage)
 
@@ -93,24 +89,16 @@ class Inpainter():
 
     @ profile
     def initializeMats(self):
-        _, self.confidence = cv2.threshold(
-            self.mask, 10, 255, cv2.THRESH_BINARY)
-        _, self.confidence = cv2.threshold(
-            self.confidence, 2, 1, cv2.THRESH_BINARY_INV)
+        # Define regions
+        self.targetRegion = np.uint8(self.mask.astype(int))
+        self.originalSourceRegion = np.uint8((~self.mask).astype(int))
+        self.sourceRegion = np.copy(self.originalSourceRegion)
 
-        self.sourceRegion = np.uint8(np.copy(self.confidence))
-        self.originalSourceRegion = np.copy(self.sourceRegion)
-
-        self.confidence = np.float32(self.confidence)
-
-        _, self.targetRegion = cv2.threshold(
-            self.mask, 10, 255, cv2.THRESH_BINARY)
-        _, self.targetRegion = cv2.threshold(
-            self.targetRegion, 2, 1, cv2.THRESH_BINARY)
-        self.targetRegion = np.uint8(self.targetRegion)
+        # Set confidence of each pixel
+        self.confidence = np.float32(self.sourceRegion)
 
         self.data = np.ndarray(
-            shape=self.inputImage.shape[:2],  dtype=np.float32)
+            shape=self.image.shape[:2],  dtype=np.float32)
 
         # Initialise kernels
         self.LAPLACIAN_KERNEL = np.array(
@@ -262,13 +250,14 @@ class Inpainter():
         alpha, beta = 0.9, 0.5
         image_float32 = np.float32(self.image)
 
+        main_i_indices = self.targetPatchSList[:, 0]
+        main_j_indices = self.targetPatchSList[:, 1]
+        target_pixels = image_float32[main_i_indices + aY, main_j_indices + aX]
+
         for (y, x) in self.sourcePatchULList:
 
-            i_indices = self.targetPatchSList[:, 0]
-            j_indices = self.targetPatchSList[:, 1]
-
-            source_pixels = image_float32[i_indices + y, j_indices + x]
-            target_pixels = image_float32[i_indices + aY, j_indices + aX]
+            source_pixels = image_float32[main_i_indices +
+                                          y, main_j_indices + x]
 
             differences = source_pixels - target_pixels
 
