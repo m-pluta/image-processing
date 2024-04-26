@@ -33,7 +33,3 @@ def detect_circle(image):
 
     # Return the boolean mask for the circle
     return largest_contour_mask.astype(bool)
-
-
-def inpaint(image, circle):
-    return image

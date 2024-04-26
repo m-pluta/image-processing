@@ -1,5 +1,4 @@
 import sys
-import math
 import time
 import cv2
 import numpy as np
@@ -9,8 +8,6 @@ from line_profiler import profile
 class Inpainter():
     # Inpainter settings
     DEFAULT_HALF_PATCH_WIDTH = 4
-    MODE_ADDITION = 0
-    MODE_MULTIPLICATION = 1
 
     # Input validation
     ERROR_INPUT_MAT_INVALID_TYPE = 0
@@ -52,7 +49,6 @@ class Inpainter():
     def __init__(self, inputImage, mask, halfPatchWidth=DEFAULT_HALF_PATCH_WIDTH):
         self.inputImage = np.copy(inputImage)
         self.mask = np.copy(mask)
-        self.mask = np.copy(mask)
         self.image = np.copy(inputImage)
         self.result = np.ndarray(
             shape=inputImage.shape, dtype=inputImage.dtype)
@@ -71,7 +67,7 @@ class Inpainter():
         return self.CHECK_VALID
 
     @profile
-    def inpaint(self):
+    def inpaint(self, debug):
         self.initializeMats()
         self.calculateGradients()
 
@@ -81,19 +77,21 @@ class Inpainter():
             self.computeData()
             self.computeTarget()
 
-            print('Computing bestpatch', time.asctime())
+            if debug:
+                print('Computing bestpatch', time.asctime())
             self.computeBestPatch()
             self.updateMats()
-
-            # cv2.imwrite("updatedMask.jpg", self.updatedMask)
-            cv2.imwrite("workImage.jpg", self.image)
+            if debug:
+                cv2.imwrite("updatedMask.jpg", self.mask)
+                workImage = cv2.cvtColor(self.image, cv2.COLOR_YCrCb2BGR)
+                cv2.imwrite("workImage.jpg", workImage)
 
             if self.checkEnd():
                 break
 
         self.result = np.copy(self.image)
 
-    @profile
+    @ profile
     def initializeMats(self):
         _, self.confidence = cv2.threshold(
             self.mask, 10, 255, cv2.THRESH_BINARY)
@@ -121,7 +119,7 @@ class Inpainter():
             [[0, 0, 0], [-1, 0, 1], [0, 0, 0]], dtype=np.float32)
         self.NORMAL_KERNELY = self.NORMAL_KERNELX.T
 
-    @profile
+    @ profile
     def calculateGradients(self):
         srcGray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
 
@@ -139,7 +137,7 @@ class Inpainter():
         self.gradientX /= 255
         self.gradientY /= 255
 
-    @profile
+    @ profile
     def computeFillFront(self):
         # Apply a Laplacian filter to find the boundary in the target region
         boundaryMat = cv2.filter2D(
@@ -172,7 +170,7 @@ class Inpainter():
         self.fillFront = list(zip(x_indices, y_indices))
         self.normals = list(zip(normalX, normalY))
 
-    @profile
+    @ profile
     def getPatch(self, point):
         centerX, centerY = point
         height, width = self.image.shape[:2]
@@ -188,7 +186,7 @@ class Inpainter():
 
         return upperLeft, lowerRight
 
-    @profile
+    @ profile
     def computeConfidence(self):
         for pX, pY in self.fillFront:
             (aX, aY), (bX, bY) = self.getPatch((pX, pY))
@@ -206,13 +204,13 @@ class Inpainter():
             # Update the confidence at point (pX, pY) based on the total number of pixels in the patch
             self.confidence[pY, pX] = total / total_pixels
 
-    @profile
+    @ profile
     def computeData(self):
         for (x, y), (currentNormalX, currentNormalY) in zip(self.fillFront, self.normals):
             self.data[y, x] = abs(
                 self.gradientX[y, x] * currentNormalX + self.gradientY[y, x] * currentNormalY) + 0.001
 
-    @profile
+    @ profile
     def computeTarget(self):
         omega, alpha, beta = 0.7, 0.2, 0.8
         self.targetIndex = 0
@@ -232,7 +230,7 @@ class Inpainter():
         # Find the index of the maximum priority
         self.targetIndex = np.argmax(priorities)
 
-    @profile
+    @ profile
     def computeBestPatch(self):
         currentPoint = self.fillFront[self.targetIndex]
         (aX, aY), (bX, bY) = self.getPatch(currentPoint)
@@ -295,7 +293,7 @@ class Inpainter():
                     self.bestMatchLowerRight = (
                         x + pWidth - 1, y + pHeight - 1)
 
-    @profile
+    @ profile
     def updateMats(self):
         targetPoint = self.fillFront[self.targetIndex]
         tX, tY = targetPoint
@@ -321,13 +319,13 @@ class Inpainter():
         self.targetRegion[target_indices] = 0
         self.mask[target_indices] = 0
 
-    @profile
+    @ profile
     def checkEnd(self):
         return np.all(self.sourceRegion != 0)
 
 
-@profile
-def inpaint(image, mask, patch_width=Inpainter.DEFAULT_HALF_PATCH_WIDTH):
+@ profile
+def inpaint(image, mask, patch_width=Inpainter.DEFAULT_HALF_PATCH_WIDTH, debug=False):
     i = Inpainter(image, mask, patch_width)
-    i.inpaint()
+    i.inpaint(debug)
     return i.result
