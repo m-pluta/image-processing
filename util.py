@@ -6,21 +6,20 @@ import numpy as np
 
 
 def show_random_images(image_paths):
-    GRID = 2
-
+    GRID_X = 6
+    GRID_Y = 3
     # Select random images
-    random_paths = random.sample(image_paths, GRID * GRID)
+    random_paths = random.sample(image_paths, GRID_X * GRID_Y)
 
-    _, axes = plt.subplots(GRID, GRID, figsize=(10, 10))
+    _, axes = plt.subplots(GRID_Y, GRID_X, figsize=(5 * GRID_X, 5 * GRID_Y))
 
     for i, image_path in enumerate(random_paths):
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # image = getFourierImage(image_path)
 
-        axes[i // GRID, i % GRID].imshow(image, cmap='gray')
-        axes[i // GRID, i % GRID].set_title(image_path)
-        axes[i // GRID, i % GRID].axis('off')
+        axes[i // GRID_X, i % GRID_X].imshow(image, cmap='gray')
+        axes[i // GRID_X, i % GRID_X].set_title(image_path)
+        axes[i // GRID_X, i % GRID_X].axis('off')
 
     plt.tight_layout()
     plt.savefig("dev/view.png")

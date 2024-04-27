@@ -79,8 +79,7 @@ class Inpainter():
             self.updateMats()
             if debug:
                 cv2.imwrite("updatedMask.jpg", self.mask.astype(np.uint8))
-                workImage = cv2.cvtColor(self.image, cv2.COLOR_YCrCb2BGR)
-                cv2.imwrite("workImage.jpg", workImage)
+                cv2.imwrite("workImage.jpg", self.image)
 
             if self.checkEnd():
                 break

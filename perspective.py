@@ -26,14 +26,14 @@ def detect_corners(image):
     return corners
 
 
-def perspective_correction(image, corners, delta=0):
+def perspective_correction(image, corners, dLU, dLB, dRU, dRB, dUL, dUR, dBL, dBR):
 
     # Define the destination position
     destination = np.array([
-        [255 - delta, + delta],
-        [-1 + delta, -1 + delta],
-        [+ delta, 255 - delta],
-        [255 - delta, 255 - delta],
+        [255 - dRU, + dUR],
+        [-1 + dLU, -1 + dUL],
+        [+ dLB, 255 - dBL],
+        [255 - dRB, 255 - dBR],
     ], dtype="float32")
 
     # Define the matrix for the perspective transform

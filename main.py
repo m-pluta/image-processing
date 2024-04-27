@@ -9,19 +9,23 @@ from measure import *
 from perspective import *
 from blur import *
 from noise import *
+from color import *
+import itertools
 
 DEFAULT_IMAGE_DIR = 'image_processing_files/xray_images/'
-INPAINTED_IMAGE_DIR = 'temp/'
-RESULT_DIR = 'checkpoint/'
+INPAINTED_IMAGE_DIR = 'checkpoint/'
+RESULT_DIR = 'Results/'
 
 USE_CHECKPOINT = False
-OUTPUT_TYPE = "png"
+OUTPUT_TYPE = "jpg"
 
 
-def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str):
+def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb):
     # random.shuffle(image_names)
-    for image_name in image_names[12:]:
-        print(image_name)
+    full_image_paths = []
+    view = False
+    for image_name in image_names:
+        # print(image_name)
 
         # Read in the image
         image_path = os.path.join(IN_DIR, image_name)
@@ -31,37 +35,32 @@ def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str):
         if not USE_CHECKPOINT:
             # Perspective Correction
             corners = detect_corners(image)
-            image = perspective_correction(image, corners, 0)
+            image = perspective_correction(image, corners, *comb)
 
-            # Inpainting the YCrCb image
-            circle = detect_circle(image)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
-            image = inpaint(image, circle.astype(np.uint8) * 255, debug=True)
-            # y, cr, cb = cv2.split(image)
+            # # Inpainting the YCrCb image
+            # circle = detect_circle(image)
+            # image = inpaint(image, circle, debug=True)
 
-            # cv2.imshow("image", cv2.hconcat([y, cr, cb]))
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-            image = cv2.cvtColor(image, cv2.COLOR_YCrCb2BGR)
-        else:
-            # Noise detection/thresholding
-            image = remove_noise(image, image_name, view=True)
+        # Noise detection/thresholding
+        image = remove_noise(image, image_name, view=view)
+        view = False
 
-            # Colour and Contrast Adjustment
+        # Colour and Contrast Adjustment
+        image = cv2.convertScaleAbs(image, alpha=1.4, beta=-65)
+
+        image = gamma_correction(image, 1.4)
 
         # eval(original, image, image_name)
 
         # Save the images
         image_name = image_name.split('.')[0] + '.' + OUTPUT_TYPE
         output_path = os.path.join(OUT_DIR, image_name)
+        full_image_paths.append(output_path)
         cv2.imwrite(output_path, image)
-        exit()
 
     # Diagnostic
-    full_image_paths = [os.path.join(OUT_DIR, image_name)
-                        for image_name in image_names]
-    show_random_images(full_image_paths)
-    show_random_split_image_gray(full_image_paths)
+    # show_random_images(full_image_paths)
+    # show_random_split_image_gray(full_image_paths)
 
 
 if __name__ == '__main__':
@@ -78,10 +77,34 @@ if __name__ == '__main__':
             image_dir = DEFAULT_IMAGE_DIR
 
     # Read in all image names
-    images = os.listdir(image_dir)
+    images = sorted(os.listdir(image_dir))
 
-    # Call main routine and measure the quality
-    process_images(images, image_dir, RESULT_DIR)
+    combinations = list(itertools.product((-1, 0, 1), repeat=8))
+    random.shuffle(combinations)
+    best = 0
+    bests = []
+    second_best = []
 
-    # Measure using model
-    measure(show_dist=False, outpath="dev/dist.png")
+    combinations = combinations[:10] + \
+        [(-1, -1, -1, -1, 0, 1, 1, -1)] + combinations[10:]
+
+    for combination in combinations:
+        print(combination, end="")
+        # Call main routine and measure the quality
+        process_images(images, image_dir, RESULT_DIR, combination)
+
+        # Measure using model
+        acc = measure(show_dist=False, outpath="dev/dist.png")
+
+        print(f" - {acc}")
+
+        if acc == best:
+            bests.append(combination)
+        elif acc > best:
+            best = acc
+            second_best = bests
+            bests = [combination]
+
+        if acc >= 0.94:
+            with open("bests.txt", "w") as file:
+                file.write(f"{best}\n{bests}\n{second_best}")

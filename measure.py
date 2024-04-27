@@ -12,7 +12,7 @@ MEAN = (0, 0, 0)
 def measure(show_dist: bool = False, outpath: str = None):
     model = cv2.dnn.readNetFromONNX('image_processing_files/classifier.model')
 
-    image_names = os.listdir('Results/')
+    image_names = sorted(os.listdir('Results/'))
 
     correct = 0
     df = []
@@ -36,7 +36,9 @@ def measure(show_dist: bool = False, outpath: str = None):
             if (label == 'h'):
                 correct += 1
 
-    print(correct / len(image_names))
+    accuracy = correct / len(image_names)
+    return accuracy
+    print(f"\nAccuracy: {accuracy}")
     df = pd.DataFrame(df)
 
     # Show all wrong predictions
