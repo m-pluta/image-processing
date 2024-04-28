@@ -20,10 +20,10 @@ USE_CHECKPOINT = False
 OUTPUT_TYPE = "jpg"
 
 
-def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb):
+def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb, beta):
     # random.shuffle(image_names)
     full_image_paths = []
-    view = True
+    view = False
     for image_name in image_names:
         # print(image_name)
 
@@ -46,9 +46,9 @@ def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb):
         view = False
 
         # Colour and Contrast Adjustment
-        image = cv2.convertScaleAbs(image, alpha=1.4, beta=-65)
+        image = cv2.convertScaleAbs(image, alpha=1.3, beta=-30)
 
-        image = gamma_correction(image, 1.4)
+        image = gamma_correction(image, 1.6)
 
         # eval(original, image, image_name)
 
@@ -59,10 +59,10 @@ def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb):
         cv2.imwrite(output_path, image)
 
     # Diagnostic
-    show_random_images(full_image_paths)
-    show_split_image_RGB(full_image_paths)
-    show_split_image_LAB(full_image_paths)
-    show_split_image_YCrCB(full_image_paths)
+    # show_random_images(full_image_paths)
+    # show_split_image_RGB(full_image_paths)
+    # show_split_image_LAB(full_image_paths)
+    # show_split_image_YCrCB(full_image_paths)
 
 
 if __name__ == '__main__':
@@ -82,14 +82,18 @@ if __name__ == '__main__':
     images = sorted(os.listdir(image_dir))
 
     combinations = list(itertools.product((-2, -1, 0, 1, 2), repeat=8))
-    # combinations = [(0, 0, -1, -1, 1, 1, -1, 1)]
-    random.shuffle(combinations)
+    beta_range = list(np.arange(-35, -70, -5))
+    combinations = [((-2, -2, -2, 0, -1, 2, 0, 0), -40), ((2, -2, -2, 1, -1, 2, 0, 2), -45),
+                    ((-1, 1, 2, -2, -2, 2, -1, -1), -55)]
+    # combinations = list(itertools.product(combinations, beta_range))
+    # random.shuffle(combinations)
+
     scores = {}
 
-    for combination in combinations:
+    for combination, beta in combinations:
         print(combination)
         # Call main routine and measure the quality
-        process_images(images, image_dir, RESULT_DIR, combination)
+        process_images(images, image_dir, RESULT_DIR, combination, beta)
 
         # Measure using model
         acc, mse = measure(show_dist=False, outpath="dev/dist.png")
@@ -97,8 +101,8 @@ if __name__ == '__main__':
         if not acc in scores:
             scores[acc] = []
 
-        scores[acc].append(combination)
+        scores[acc].append((combination, beta))
 
-        with open('bests7.txt', 'w') as file:
+        with open('bests9.txt', 'w') as file:
             for key in sorted(scores.keys(), reverse=True)[:5]:
                 file.write(f'{key}: {scores[key]}\n')

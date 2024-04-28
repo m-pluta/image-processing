@@ -110,7 +110,7 @@ def remove_noise(image, image_name, view=True):
 
     median_y = cv2.medianBlur(y, ksize=9)
     diff = y.astype(np.int8) - median_y.astype(np.int8)
-    noise = (diff < -30)
+    noise = threshFilter(diff < -25, 4)
 
     if view:
         show(rgb(median_y), axes[5, 0], "Gaussian Y")
