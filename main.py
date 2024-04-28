@@ -23,7 +23,7 @@ OUTPUT_TYPE = "jpg"
 def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb):
     # random.shuffle(image_names)
     full_image_paths = []
-    view = False
+    view = True
     for image_name in image_names:
         # print(image_name)
 
@@ -59,8 +59,10 @@ def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb):
         cv2.imwrite(output_path, image)
 
     # Diagnostic
-    # show_random_images(full_image_paths)
-    # show_random_split_image_gray(full_image_paths)
+    show_random_images(full_image_paths)
+    show_split_image_RGB(full_image_paths)
+    show_split_image_LAB(full_image_paths)
+    show_split_image_YCrCB(full_image_paths)
 
 
 if __name__ == '__main__':
@@ -79,32 +81,24 @@ if __name__ == '__main__':
     # Read in all image names
     images = sorted(os.listdir(image_dir))
 
-    combinations = list(itertools.product((-1, 0, 1), repeat=8))
+    combinations = list(itertools.product((-2, -1, 0, 1, 2), repeat=8))
+    # combinations = [(0, 0, -1, -1, 1, 1, -1, 1)]
     random.shuffle(combinations)
-    best = 0
-    bests = []
-    second_best = []
-
-    combinations = combinations[:10] + \
-        [(-1, -1, -1, -1, 0, 1, 1, -1)] + combinations[10:]
+    scores = {}
 
     for combination in combinations:
-        print(combination, end="")
+        print(combination)
         # Call main routine and measure the quality
         process_images(images, image_dir, RESULT_DIR, combination)
 
         # Measure using model
-        acc = measure(show_dist=False, outpath="dev/dist.png")
+        acc, mse = measure(show_dist=False, outpath="dev/dist.png")
 
-        print(f" - {acc}")
+        if not acc in scores:
+            scores[acc] = []
 
-        if acc == best:
-            bests.append(combination)
-        elif acc > best:
-            best = acc
-            second_best = bests
-            bests = [combination]
+        scores[acc].append(combination)
 
-        if acc >= 0.94:
-            with open("bests.txt", "w") as file:
-                file.write(f"{best}\n{bests}\n{second_best}")
+        with open('bests7.txt', 'w') as file:
+            for key in sorted(scores.keys(), reverse=True)[:5]:
+                file.write(f'{key}: {scores[key]}\n')

@@ -25,53 +25,76 @@ def show_random_images(image_paths):
     plt.savefig("dev/view.png")
 
 
-def show_random_split_image_color(image_paths):
+def show_split_image_RGB(image_paths):
 
     # Select the random image
     random_path = random.choice(image_paths)
-    image = cv2.imread(random_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    original = cv2.imread(random_path)
+    image = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
 
-    # Create empty matrices with zeros for each color channel image
-    red_channel = np.zeros_like(image)
-    green_channel = np.zeros_like(image)
-    blue_channel = np.zeros_like(image)
-
-    # Assign the respective channel to each matrix.
-    red_channel[:, :, 0] = image[:, :, 0]
-    green_channel[:, :, 1] = image[:, :, 1]
-    blue_channel[:, :, 2] = image[:, :, 2]
+    channels = cv2.split(image)
 
     # Prepare the figure
     _, axes = plt.subplots(2, 2, figsize=(10, 10))
-    images = [image, red_channel, green_channel, blue_channel]
+    images = [original] + list(channels)
     titles = [random_path, 'Red Channel', 'Green Channel', 'Blue Channel']
 
     # Create the figure
     for i, img in enumerate(images):
         ax = axes[i // 2, i % 2]
-        ax.imshow(img)
+        if i == 0:
+            ax.imshow(img)
+        else:
+            ax.imshow(img, cmap='gray')
         ax.set_title(titles[i])
         ax.axis('off')
 
     plt.tight_layout()
-    plt.savefig("dev/split.png")
+    plt.savefig("dev/splitRGB.png")
 
 
-def show_random_split_image_gray(image_paths):
+def show_split_image_LAB(image_paths):
     # Select a random image
     random_path = random.choice(image_paths)
-    image = cv2.imread(random_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    original = cv2.imread(random_path)
+    image = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
 
     # Split the image into its channels
     channels = cv2.split(image)
 
     # Prepare the figure
     _, axes = plt.subplots(2, 2, figsize=(10, 10))
-    images = [image] + list(channels)
+    images = [original] + list(channels)
 
-    titles = [random_path, 'Red Channel', 'Green Channel', 'Blue Channel']
+    titles = [random_path, 'L Channel', 'A Channel', 'B Channel']
+
+    for i, img in enumerate(images):
+        ax = axes[i // 2, i % 2]
+        if i == 0:
+            ax.imshow(img)
+        else:
+            ax.imshow(img, cmap='gray')
+        ax.axis('off')
+        ax.set_title(titles[i])
+
+    plt.tight_layout()
+    plt.savefig("dev/splitLAB.png")
+
+
+def show_split_image_YCrCB(image_paths):
+    # Select a random image
+    random_path = random.choice(image_paths)
+    original = cv2.imread(random_path)
+    image = cv2.cvtColor(original, cv2.COLOR_BGR2YCrCb)
+
+    # Split the image into its channels
+    channels = cv2.split(image)
+
+    # Prepare the figure
+    _, axes = plt.subplots(2, 2, figsize=(10, 10))
+    images = [original] + list(channels)
+
+    titles = [random_path, 'Y Channel', 'Cr Channel', 'Cb Channel']
 
     for i, img in enumerate(images):
         ax = axes[i // 2, i % 2]
@@ -83,7 +106,7 @@ def show_random_split_image_gray(image_paths):
         ax.set_title(titles[i])
 
     plt.tight_layout()
-    plt.savefig("dev/split.png")
+    plt.savefig("dev/splitYCrCB.png")
 
 
 def eval(original, image, image_name):

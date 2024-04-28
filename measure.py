@@ -1,6 +1,5 @@
 import os
 import cv2
-import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -15,6 +14,7 @@ def measure(show_dist: bool = False, outpath: str = None):
     image_names = sorted(os.listdir('Results/'))
 
     correct = 0
+    mse = 0
     df = []
 
     for image_name in image_names:
@@ -29,16 +29,20 @@ def measure(show_dist: bool = False, outpath: str = None):
         label = image_name[6]
         df.append({'label': label, 'pred': output, 'image': image_name})
 
-        if (output > 0.5):
-            if (label == 'p'):
+        if label == 'p':
+            if output > 0.5:
                 correct += 1
+            mse += (1. - output) ** 2
         else:
-            if (label == 'h'):
+            if output <= 0.5:
                 correct += 1
+            mse += output ** 2
+
+        # if image_name == 'im095-pneumonia.jpg':
+        #     print(f"{output=}")
 
     accuracy = correct / len(image_names)
-    return accuracy
-    print(f"\nAccuracy: {accuracy}")
+
     df = pd.DataFrame(df)
 
     # Show all wrong predictions
@@ -54,6 +58,8 @@ def measure(show_dist: bool = False, outpath: str = None):
     print(", ".join(pneumonia_low_pred))
     print("Wrong healthy images")
     print(", ".join(healthy_high_pred))
+    print(f"Accuracy: {accuracy}")
+    print(f"MSE: {mse}\n")
 
     # Plotting a stacked histogram
     plt.figure(figsize=(6, 6))
@@ -80,6 +86,8 @@ def measure(show_dist: bool = False, outpath: str = None):
         plt.savefig(outpath)
     if show_dist:
         plt.show()
+
+    return accuracy, mse
 
 
 if __name__ == '__main__':

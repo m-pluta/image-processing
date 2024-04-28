@@ -1,5 +1,6 @@
 import numpy as np
 from blur import *
+import pywt
 import cv2
 import matplotlib.pyplot as plt
 
@@ -20,10 +21,13 @@ def show(image, ax, title):
 
 def remove_noise(image, image_name, view=True):
     image_name = image_name.split(".")[0]
+    GRID_X = 6
+    GRID_Y = 6
 
     # Setup for displaying the process
     if view:
-        _, axes = plt.subplots(5, 5, figsize=(15, 15))
+        _, axes = plt.subplots(
+            GRID_Y, GRID_X, figsize=(3 * GRID_X, 3 * GRID_Y))
 
     # Initialise noise detection
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -48,18 +52,18 @@ def remove_noise(image, image_name, view=True):
     pep = (diff < -30)
 
     if view:
-        show(rgb(gaussian_image), axes[1, 3], "Gaussian")
-        show(pep.astype(np.uint8), axes[1, 4], "Gaussian pepper")
+        show(rgb(gaussian_image), axes[1, 0], "Gaussian")
+        show(pep.astype(np.uint8), axes[1, 3], "Gaussian pepper")
 
     processed_image[pep] = gaussian_image[pep]
 
     if view:
-        show(rgb(processed_image), axes[2, 4], "Processed Image 2")
+        show(rgb(processed_image), axes[1, 4], "Processed Image 2")
 
     b, g, r = cv2.split(processed_image)
 
-    b = b * 1.8
-    b = b.astype(np.uint8)
+    # b = b * 1.8
+    # b = b.astype(np.uint8)
 
     # r = cv2.convertScaleAbs(r, alpha=0.9, beta=0)
 
@@ -68,34 +72,58 @@ def remove_noise(image, image_name, view=True):
         show(g, axes[2, 1], "Green")
         show(r, axes[2, 2], "Red")
 
-    nlmeans_b = cv2.fastNlMeansDenoising(
+    b = cv2.fastNlMeansDenoising(
         b,
         h=9,
         templateWindowSize=7,
         searchWindowSize=21
     )
 
-    nlmeans_g = cv2.fastNlMeansDenoising(
+    g = cv2.fastNlMeansDenoising(
         g,
-        h=11,
+        h=9,
         templateWindowSize=7,
         searchWindowSize=21
     )
 
-    nlmeans_r = cv2.fastNlMeansDenoising(
+    r = cv2.fastNlMeansDenoising(
         r,
         h=11,
         templateWindowSize=7,
         searchWindowSize=21
     )
 
-    processed_image = cv2.merge([nlmeans_b, nlmeans_g, nlmeans_r])
+    processed_image = cv2.merge([b, g, r])
 
     if view:
-        show(nlmeans_b, axes[3, 0], "Denoised Blue")
-        show(nlmeans_g, axes[3, 1], "Denoised Green")
-        show(nlmeans_r, axes[3, 2], "Denoised Red")
+        show(b, axes[3, 0], "Denoised Blue")
+        show(g, axes[3, 1], "Denoised Green")
+        show(r, axes[3, 2], "Denoised Red")
         show(rgb(processed_image), axes[3, 3], "Denoised")
+
+    y, cr, cb = cv2.split(cv2.cvtColor(processed_image, cv2.COLOR_BGR2YCrCb))
+
+    if view:
+        show(y, axes[4, 0], "Y")
+        show(cr, axes[4, 1], "Cr")
+        show(cb, axes[4, 2], "Cb")
+
+    median_y = cv2.medianBlur(y, ksize=9)
+    diff = y.astype(np.int8) - median_y.astype(np.int8)
+    noise = (diff < -30)
+
+    if view:
+        show(rgb(median_y), axes[5, 0], "Gaussian Y")
+        show(noise.astype(np.uint8), axes[5, 1], "Gaussian pepper Y")
+
+    y[noise] = median_y[noise]
+
+    processed_image = cv2.merge([y, cr, cb])
+    processed_image = cv2.cvtColor(processed_image, cv2.COLOR_YCrCb2BGR)
+
+    if view:
+        show(rgb(y), axes[5, 2], "Processed Y")
+        show(rgb(processed_image), axes[5, 3], "Processed Image 3")
 
     if view:
         plt.tight_layout()
