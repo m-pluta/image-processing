@@ -238,8 +238,7 @@ class Inpainter():
                 convolvedMat[:-pHeight, :-pWidth] == area)
 
         # Filter sourcePatchULList to only include points within 70 units of (aX, aY)
-
-        max_distance = 160
+        max_distance = 120
         UL_array = np.array(self.sourcePatchULList)
         distances = np.sqrt((UL_array[:, 1] - aX)
                             ** 2 + (UL_array[:, 0] - aY) ** 2)
