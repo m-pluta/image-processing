@@ -1,6 +1,5 @@
 import numpy as np
 from blur import *
-import pywt
 import cv2
 import matplotlib.pyplot as plt
 
@@ -94,7 +93,6 @@ def remove_noise(image, image_name, view=True):
     )
 
     processed_image = cv2.merge([b, g, r])
-
     if view:
         show(b, axes[3, 0], "Denoised Blue")
         show(g, axes[3, 1], "Denoised Green")
@@ -120,7 +118,6 @@ def remove_noise(image, image_name, view=True):
 
     processed_image = cv2.merge([y, cr, cb])
     processed_image = cv2.cvtColor(processed_image, cv2.COLOR_YCrCb2BGR)
-
     if view:
         show(rgb(y), axes[5, 2], "Processed Y")
         show(rgb(processed_image), axes[5, 3], "Processed Image 3")
