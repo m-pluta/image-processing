@@ -7,7 +7,7 @@ from line_profiler import profile
 
 class Inpainter():
     # Inpainter settings
-    DEFAULT_HALF_PATCH_WIDTH = 4
+    DEFAULT_HALF_PATCH_WIDTH = 3
 
     # Input validation
     ERROR_INPUT_MAT_INVALID_TYPE = 0
@@ -18,6 +18,7 @@ class Inpainter():
 
     # Inpainter variables
     image = None
+    shape = None
     mask = None
     result = None
     sourceRegion = None
@@ -42,28 +43,29 @@ class Inpainter():
     targetPatchSList = []
     targetPatchTList = []
     halfPatchWidth = None
-    targetIndex = None
+    targetPoint = None
 
     @profile
-    def __init__(self, image, mask, halfPatchWidth=DEFAULT_HALF_PATCH_WIDTH):
+    def __init__(self, image, mask, halfPatchWidth=4):
         self.image = np.copy(image)
         self.mask = np.copy(mask)
         self.halfPatchWidth = halfPatchWidth
+        self.shape = self.image.shape[:2]
 
     @profile
     def checkValidInputs(self):
         if not self.image.dtype == np.uint8:  # CV_8UC3
             return self.ERROR_INPUT_MAT_INVALID_TYPE
-        if not self.mask.dtype == bool:  # boolean mask
+        if not self.mask.dtype == bool:  # Boolean mask
             return self.ERROR_INPUT_MASK_INVALID_TYPE
-        if not self.mask.shape == self.image.shape[:2]:  # CV_ARE_SIZES_EQ
+        if not self.mask.shape == self.shape:  # CV_ARE_SIZES_EQ
             return self.ERROR_MASK_INPUT_SIZE_MISMATCH
         if self.halfPatchWidth == 0:
             return self.ERROR_HALF_PATCH_WIDTH_ZERO
         return self.CHECK_VALID
 
     @profile
-    def inpaint(self, debug):
+    def inpaint(self, debug=False):
         self.initializeMats()
         self.calculateGradients()
 
@@ -75,8 +77,10 @@ class Inpainter():
 
             if debug:
                 print('Computing bestpatch', time.asctime())
+
             self.computeBestPatch()
             self.updateMats()
+
             if debug:
                 cv2.imwrite("updatedMask.jpg", self.mask.astype(np.uint8))
                 cv2.imwrite("workImage.jpg", self.image)
@@ -86,7 +90,7 @@ class Inpainter():
 
         self.result = np.copy(self.image)
 
-    @ profile
+    @profile
     def initializeMats(self):
         # Define regions
         self.targetRegion = np.uint8(self.mask.astype(int))
@@ -106,7 +110,7 @@ class Inpainter():
             [[0, 0, 0], [-1, 0, 1], [0, 0, 0]], dtype=np.float32)
         self.NORMAL_KERNELY = self.NORMAL_KERNELX.T
 
-    @ profile
+    @profile
     def calculateGradients(self):
         srcGray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
 
@@ -124,13 +128,12 @@ class Inpainter():
         self.gradientX /= 255
         self.gradientY /= 255
 
-    @ profile
+    @profile
     def computeFillFront(self):
-        # Apply a Laplacian filter to find the boundary in the target region
+        # elements of boundryMat, whose value > 0 are neighbour pixels of target region.
         boundaryMat = cv2.filter2D(
             self.targetRegion, cv2.CV_32F, self.LAPLACIAN_KERNEL)
 
-        # Apply normal kernels to the source region to find gradients
         sourceGradientX = cv2.filter2D(
             self.sourceRegion, cv2.CV_32F, self.NORMAL_KERNELX)
         sourceGradientY = cv2.filter2D(
@@ -157,10 +160,10 @@ class Inpainter():
         self.fillFront = list(zip(x_indices, y_indices))
         self.normals = list(zip(normalX, normalY))
 
-    @ profile
+    @profile
     def getPatch(self, point):
         centerX, centerY = point
-        height, width = self.image.shape[:2]
+        height, width = self.shape
 
         minX = max(centerX - self.halfPatchWidth, 0)
         minY = max(centerY - self.halfPatchWidth, 0)
@@ -173,7 +176,7 @@ class Inpainter():
 
         return upperLeft, lowerRight
 
-    @ profile
+    @profile
     def computeConfidence(self):
         for pX, pY in self.fillFront:
             (aX, aY), (bX, bY) = self.getPatch((pX, pY))
@@ -191,18 +194,16 @@ class Inpainter():
             # Update the confidence at point (pX, pY) based on the total number of pixels in the patch
             self.confidence[pY, pX] = total / total_pixels
 
-    @ profile
+    @profile
     def computeData(self):
-        for (x, y), (currentNormalX, currentNormalY) in zip(self.fillFront, self.normals):
+        for (x, y), (currNormX, currNormY) in zip(self.fillFront, self.normals):
             self.data[y, x] = abs(
-                self.gradientX[y, x] * currentNormalX + self.gradientY[y, x] * currentNormalY) + 0.001
+                self.gradientX[y, x] * currNormX + self.gradientY[y, x] * currNormY) + 0.001
 
-    @ profile
+    @profile
     def computeTarget(self):
         omega, alpha, beta = 0.7, 0.2, 0.8
-        self.targetIndex = 0
 
-        # Assuming fillFront is a list of tuples, we convert relevant parts of confidence and data to arrays
         fillfront_indices = np.array(self.fillFront)
 
         indices = fillfront_indices[:, 1], fillfront_indices[:, 0]
@@ -215,11 +216,12 @@ class Inpainter():
         # priorities = self.data[indices] * self.confidence[indices]
 
         # Find the index of the maximum priority
-        self.targetIndex = np.argmax(priorities)
+        targetIndex = np.argmax(priorities)
+        self.targetPoint = self.fillFront[targetIndex]
 
-    @ profile
+    @profile
     def computeBestPatch(self):
-        currentPoint = self.fillFront[self.targetIndex]
+        currentPoint = self.targetPoint
         (aX, aY), (bX, bY) = self.getPatch(currentPoint)
         pHeight, pWidth = bY - aY + 1, bX - aX + 1
 
@@ -235,41 +237,51 @@ class Inpainter():
             self.sourcePatchULList = np.argwhere(
                 convolvedMat[:-pHeight, :-pWidth] == area)
 
-        sourceRegion = self.sourceRegion[aY:aY + pHeight + 1,
-                                         aX:aX + pWidth + 1]
+        # Filter sourcePatchULList to only include points within 70 units of (aX, aY)
 
-        source_pixels = sourceRegion == 1
+        max_distance = 160
+        UL_array = np.array(self.sourcePatchULList)
+        distances = np.sqrt((UL_array[:, 1] - aX)
+                            ** 2 + (UL_array[:, 0] - aY) ** 2)
+        self.sourcePatchULList = UL_array[distances <= max_distance]
+
+        targetPatch = self.sourceRegion[aY:aY + pHeight, aX:aX + pWidth]
+
+        source_pixels = targetPatch == 1
 
         self.targetPatchSList = np.argwhere(source_pixels)
         self.targetPatchTList = np.argwhere(~source_pixels)
 
-        # Pre-compute values
         countedNum = float(len(self.targetPatchSList))
         minError = bestPatchVariance = sys.maxsize
         alpha, beta = 0.9, 0.5
-        image_float32 = np.float32(self.image)
 
-        main_i_indices = self.targetPatchSList[:, 0]
-        main_j_indices = self.targetPatchSList[:, 1]
-        target_pixels = image_float32[main_i_indices + aY, main_j_indices + aX]
+        SList_i_indices = self.targetPatchSList[:, 0]
+        SList_j_indices = self.targetPatchSList[:, 1]
+
+        image_float32 = np.float32(self.image)
+        image_int = self.image.astype(np.int64)
+        targetPixels = image_int[SList_i_indices + aY,
+                                 SList_j_indices + aX, :]
 
         for (y, x) in self.sourcePatchULList:
+            sourcePixels = image_int[SList_i_indices + y,
+                                     SList_j_indices + x, :]
 
-            source_pixels = image_float32[main_i_indices +
-                                          y, main_j_indices + x]
-
-            differences = source_pixels - target_pixels
+            differences = sourcePixels - targetPixels
 
             patchError = np.sum(differences ** 2) / countedNum
 
             if alpha * patchError <= minError:
+                meanRGB = np.mean(sourcePixels, axis=0)
+
                 i_indices = self.targetPatchTList[:, 0]
                 j_indices = self.targetPatchTList[:, 1]
-                sourcePixels = self.image[i_indices + y, j_indices + x, :]
 
-                meanRGB = np.mean(sourcePixels, axis=0)
-                difference = sourcePixels - meanRGB
-                patchVariance = np.sum(difference ** 2)
+                sourcePixels = image_float32[i_indices + y, j_indices + x, :]
+                sourcePixels = sourcePixels - meanRGB
+
+                patchVariance = np.sum(sourcePixels ** 2)
 
                 # Use alpha & Beta to encourage path with less patch variance.
                 # For situations in which you need little variance.
@@ -278,14 +290,12 @@ class Inpainter():
                     bestPatchVariance = patchVariance
                     minError = patchError
                     self.bestMatchUpperLeft = (x, y)
-                    self.bestMatchLowerRight = (
-                        x + pWidth - 1, y + pHeight - 1)
+                    self.bestMatchLowerRight = (x+pWidth-1, y+pHeight-1)
 
-    @ profile
+    @profile
     def updateMats(self):
-        targetPoint = self.fillFront[self.targetIndex]
-        tX, tY = targetPoint
-        (aX, aY), _ = self.getPatch(targetPoint)
+        tX, tY = self.targetPoint
+        (aX, aY), _ = self.getPatch(self.targetPoint)
         bulX, bulY = self.bestMatchUpperLeft
 
         # Convert list of tuples to a NumPy array and get i and j arrays
@@ -307,7 +317,7 @@ class Inpainter():
         self.targetRegion[target_indices] = 0
         self.mask[target_indices] = 0
 
-    @ profile
+    @profile
     def checkEnd(self):
         return np.all(self.sourceRegion != 0)
 

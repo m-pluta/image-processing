@@ -82,10 +82,7 @@ def measure(show_dist: bool = False, outpath: str = None):
     plt.grid(axis='y', alpha=0.75)
     plt.tight_layout()
 
-    if outpath:
-        plt.savefig(outpath)
-    if show_dist:
-        plt.show()
+    plt.savefig("dev/dist.png")
 
     return accuracy, mse
 
