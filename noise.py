@@ -1,5 +1,4 @@
 import numpy as np
-from blur import *
 import cv2
 import matplotlib.pyplot as plt
 
@@ -21,7 +20,7 @@ def show(image, ax, title):
 def remove_noise(image, image_name, view=True):
     image_name = image_name.split(".")[0]
     GRID_X = 6
-    GRID_Y = 6
+    GRID_Y = 8
 
     # Setup for displaying the process
     if view:

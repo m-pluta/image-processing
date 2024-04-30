@@ -3,6 +3,7 @@ import numpy as np
 
 
 def gamma_correction(image, gamma=1.0):
+    # Create look up table for gamma correction
     table = np.array([((i / 255.0) ** gamma) *
                      255 for i in np.arange(0, 256)]).astype("uint8")
 

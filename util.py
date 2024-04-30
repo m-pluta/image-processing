@@ -1,25 +1,21 @@
 import cv2
-from skimage.metrics import structural_similarity as SSIM
 import random
 import matplotlib.pyplot as plt
-import numpy as np
 
 
-def show_random_images(image_paths):
-    GRID_X = 6
-    GRID_Y = 3
+def show_random_images(image_paths, row=6, col=3):
     # Select random images
-    random_paths = random.sample(image_paths, GRID_X * GRID_Y)
+    random_paths = random.sample(image_paths, row * col)
 
-    _, axes = plt.subplots(GRID_Y, GRID_X, figsize=(5 * GRID_X, 5 * GRID_Y))
+    _, axes = plt.subplots(col, row, figsize=(5 * row, 5 * col))
 
     for i, image_path in enumerate(random_paths):
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        axes[i // GRID_X, i % GRID_X].imshow(image, cmap='gray')
-        axes[i // GRID_X, i % GRID_X].set_title(image_path)
-        axes[i // GRID_X, i % GRID_X].axis('off')
+        axes[i // row, i % row].imshow(image, cmap='gray')
+        axes[i // row, i % row].set_title(image_path.split('/')[-1])
+        axes[i // row, i % row].axis('off')
 
     plt.tight_layout()
     plt.savefig("dev/view.png")
@@ -107,39 +103,3 @@ def show_split_image_YCrCB(image_paths):
 
     plt.tight_layout()
     plt.savefig("dev/splitYCrCB.png")
-
-
-def eval(original, image, image_name):
-    # Calculate PSNR
-    psnr_value = cv2.PSNR(original, image)
-
-    # Convert images to grayscale (if necessary)
-    noisy_image_gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
-    denoised_image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Calculate SSIM
-    ssim_value = SSIM(noisy_image_gray, denoised_image_gray)
-
-    # Calculate MSE
-    mse = np.mean((original - image) ** 2)
-
-    # Calculate MAE
-    mae = np.mean(np.abs(original - image))
-
-    # Calculate RMSE
-    rmse = np.sqrt(mse)
-
-    # Calculate entropy
-    _, noisy_entropy = cv2.meanStdDev(noisy_image_gray)
-    _, denoised_entropy = cv2.meanStdDev(denoised_image_gray)
-
-    print(f"Evaluation Metrics - {image_name}")
-    print("PSNR:", psnr_value)
-    print("SSIM:", ssim_value)
-    print("MSE:", mse)
-    print("MAE:", mae)
-    print("RMSE:", rmse)
-    print("Noisy Image Entropy:", noisy_entropy[0][0])
-    print("Denoised Image Entropy:", denoised_entropy[0][0])
-
-    pass

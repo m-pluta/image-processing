@@ -7,7 +7,6 @@ from inpaint import inpaint
 from util import *
 from measure import *
 from perspective import *
-from blur import *
 from noise import *
 from color import *
 
@@ -19,38 +18,40 @@ USE_CHECKPOINT = False
 OUTPUT_TYPE = "jpg"
 
 
-def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str, comb,  a, b, y):
+def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str):
     # random.shuffle(image_names)
     full_image_paths = []
     view = False
 
-    for image_name in image_names:
+    show_random_images([os.path.join(IN_DIR, image_name)
+                       for image_name in image_names], 2, 2)
+
+    for image_name in image_names[16:17]:
         print(image_name)
 
         # Read in the image
         image_path = os.path.join(IN_DIR, image_name)
-        original = cv2.imread(image_path)
-        image = original.copy()
+        image = cv2.imread(image_path)
 
         if not USE_CHECKPOINT:
             # Perspective Correction
             corners = detect_corners(image)
-            image = perspective_correction(image, corners, *comb)
+            cv2.imwrite("prev.png", image)
+            image = perspective_correction(image, corners)
+            cv2.imwrite("after.png", image)
 
             # Inpainting the image
             circle = detect_circle(image)
-            image = inpaint(image, circle, debug=False)
+            image = inpaint(image, circle, debug=True)
 
         # Noise detection/thresholding
         image = remove_noise(image, image_name, view=view)
         view = False
 
         # Colour and Contrast Adjustment
-        image = cv2.convertScaleAbs(image, alpha=a, beta=b)
+        image = cv2.convertScaleAbs(image, alpha=1.31, beta=-41)
 
-        image = gamma_correction(image, y)
-
-        # eval(original, image, image_name)
+        image = gamma_correction(image, 1.5)
 
         # Save the images
         image_name = image_name.split('.')[0] + '.' + OUTPUT_TYPE
@@ -82,10 +83,14 @@ if __name__ == '__main__':
     # Read in all image names
     images = sorted(os.listdir(image_dir))
 
-    warp = (-2, -2, -2, 0, -1, 2, 0, 0)
-    color = (1.31, -41, 1.5)
     # Call main routine and measure the quality
-    process_images(images, image_dir, RESULT_DIR, warp, *color)
+    process_images(images, image_dir, RESULT_DIR)
 
     # Measure using model
-    acc, mse = measure(show_dist=False, outpath="dev/dist.png")
+    acc, rmse, b_score, type2, type1 = measure(
+        dir=RESULT_DIR, debug=False)
+    print(f"{acc=}")
+    print(f"{rmse=}")
+    print(f"{b_score=}")
+    print(f"{type2=}")
+    print(f"{type1=}")
