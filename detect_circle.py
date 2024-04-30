@@ -14,12 +14,12 @@ def detect_circle(image):
     # Find the contours
     contours, _ = cv2.findContours(
         mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        print("Circle not found!!!")
-        exit()
 
     # Create an empty mask for the largest contour
     largest_contour_mask = np.zeros_like(mask)
+
+    if not contours:
+        return largest_contour_mask.astype(bool)
 
     # Find the largest contour
     largest_contour = max(contours, key=cv2.contourArea)

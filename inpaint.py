@@ -1,8 +1,6 @@
 import sys
-import time
 import cv2
 import numpy as np
-from line_profiler import profile
 
 
 class Inpainter():
@@ -45,14 +43,12 @@ class Inpainter():
     halfPatchWidth = None
     targetPoint = None
 
-    @profile
     def __init__(self, image, mask, halfPatchWidth=4):
         self.image = np.copy(image)
         self.mask = np.copy(mask)
         self.halfPatchWidth = halfPatchWidth
         self.shape = self.image.shape[:2]
 
-    @profile
     def checkValidInputs(self):
         if not self.image.dtype == np.uint8:  # CV_8UC3
             return self.ERROR_INPUT_MAT_INVALID_TYPE
@@ -64,8 +60,7 @@ class Inpainter():
             return self.ERROR_HALF_PATCH_WIDTH_ZERO
         return self.CHECK_VALID
 
-    @profile
-    def inpaint(self, debug=False):
+    def inpaint(self):
         self.initializeMats()
         self.calculateGradients()
 
@@ -75,22 +70,14 @@ class Inpainter():
             self.computeData()
             self.computeTarget()
 
-            if debug:
-                print('Computing bestpatch', time.asctime())
-
             self.computeBestPatch()
             self.updateMats()
-
-            if debug:
-                cv2.imwrite("updatedMask.jpg", self.mask.astype(np.uint8))
-                cv2.imwrite("workImage.jpg", self.image)
 
             if self.checkEnd():
                 break
 
         self.result = np.copy(self.image)
 
-    @profile
     def initializeMats(self):
         # Define regions
         self.targetRegion = np.uint8(self.mask.astype(int))
@@ -110,7 +97,6 @@ class Inpainter():
             [[0, 0, 0], [-1, 0, 1], [0, 0, 0]], dtype=np.float32)
         self.NORMAL_KERNELY = self.NORMAL_KERNELX.T
 
-    @profile
     def calculateGradients(self):
         srcGray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
 
@@ -128,7 +114,6 @@ class Inpainter():
         self.gradientX /= 255
         self.gradientY /= 255
 
-    @profile
     def computeFillFront(self):
         # elements of boundryMat, whose value > 0 are neighbour pixels of target region.
         boundaryMat = cv2.filter2D(
@@ -160,7 +145,6 @@ class Inpainter():
         self.fillFront = list(zip(x_indices, y_indices))
         self.normals = list(zip(normalX, normalY))
 
-    @profile
     def getPatch(self, point):
         centerX, centerY = point
         height, width = self.shape
@@ -176,7 +160,6 @@ class Inpainter():
 
         return upperLeft, lowerRight
 
-    @profile
     def computeConfidence(self):
         for pX, pY in self.fillFront:
             (aX, aY), (bX, bY) = self.getPatch((pX, pY))
@@ -194,13 +177,11 @@ class Inpainter():
             # Update the confidence at point (pX, pY) based on the total number of pixels in the patch
             self.confidence[pY, pX] = total / total_pixels
 
-    @profile
     def computeData(self):
         for (x, y), (currNormX, currNormY) in zip(self.fillFront, self.normals):
             self.data[y, x] = abs(
                 self.gradientX[y, x] * currNormX + self.gradientY[y, x] * currNormY) + 0.001
 
-    @profile
     def computeTarget(self):
         omega, alpha, beta = 0.7, 0.2, 0.8
 
@@ -219,7 +200,6 @@ class Inpainter():
         targetIndex = np.argmax(priorities)
         self.targetPoint = self.fillFront[targetIndex]
 
-    @profile
     def computeBestPatch(self):
         currentPoint = self.targetPoint
         (aX, aY), (bX, bY) = self.getPatch(currentPoint)
@@ -291,7 +271,6 @@ class Inpainter():
                     self.bestMatchUpperLeft = (x, y)
                     self.bestMatchLowerRight = (x+pWidth-1, y+pHeight-1)
 
-    @profile
     def updateMats(self):
         tX, tY = self.targetPoint
         (aX, aY), _ = self.getPatch(self.targetPoint)
@@ -316,13 +295,11 @@ class Inpainter():
         self.targetRegion[target_indices] = 0
         self.mask[target_indices] = 0
 
-    @profile
     def checkEnd(self):
         return np.all(self.sourceRegion != 0)
 
 
-@ profile
-def inpaint(image, mask, patch_width=Inpainter.DEFAULT_HALF_PATCH_WIDTH, debug=False):
+def inpaint(image, mask, patch_width=Inpainter.DEFAULT_HALF_PATCH_WIDTH):
     i = Inpainter(image, mask, patch_width)
-    i.inpaint(debug)
+    i.inpaint()
     return i.result

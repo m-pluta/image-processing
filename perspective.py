@@ -37,8 +37,3 @@ def perspective_correction(image, corners):
     image = cv2.warpPerspective(image, matrix, (256, 256))
 
     return image
-
-
-def drawBorders(image, corners):
-    # Draw the borders onto the image
-    cv2.drawContours(image, [corners], -1, (0, 255, 0), 1)
