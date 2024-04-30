@@ -12,7 +12,16 @@ DEFAULT_IMAGE_DIR = 'image_processing_files/xray_images/'
 RESULT_DIR = 'Results/'
 
 
-def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str):
+def process_images(IN_DIR: str, OUT_DIR: str):
+    """Processes all the images in `IN_DIR` and saves them to `OUT_DIR`
+
+    Args:
+        IN_DIR (str): Source directory containing noisy unclean images
+        OUT_DIR (str): Target directory to save the clean images to
+    """
+    # Read in all image names
+    image_names = sorted(os.listdir(image_dir))
+
     for image_name in image_names:
         print(image_name)
 
@@ -51,8 +60,5 @@ if __name__ == '__main__':
     else:
         image_dir = DEFAULT_IMAGE_DIR
 
-    # Read in all image names
-    images = sorted(os.listdir(image_dir))
-
     # Call main routine and measure the quality
-    process_images(images, image_dir, RESULT_DIR)
+    process_images(image_dir, RESULT_DIR)

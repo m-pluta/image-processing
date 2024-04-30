@@ -2,8 +2,16 @@ import cv2
 import numpy as np
 
 
-def detect_corners(image):
-    # Convert to gray-scale
+def detect_corners(image: np.ndarray):
+    """Detects the corners of the image that is perspective warped
+
+    Args:
+        image (np.ndarray): Input image
+
+    Returns:
+        _type_: List of corners of the image within the input image
+    """
+    # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Get the binary thresholded image
@@ -23,7 +31,16 @@ def detect_corners(image):
     return corners
 
 
-def perspective_correction(image, corners):
+def perspective_correction(image: np.ndarray, corners: np.ndarray):
+    """Performs the perspective correction on an image given the corners
+
+    Args:
+        image (np.ndarray): Input image
+        corners (np.ndarray): Corners of the perspective warped image
+
+    Returns:
+        np.ndarray: Perspective corrected image
+    """
     # Define the destination position
     destination = np.array([
         [257, 2], [-3, -2], [-2, 255], [255, 255],

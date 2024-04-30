@@ -4,7 +4,15 @@ import numpy as np
 MASK_STROKE_WIDTH = 2
 
 
-def detect_circle(image):
+def detect_circle(image: np.ndarray):
+    """Detects the largest circular shape in an image assuming it is darker than the background
+
+    Args:
+        image (np.ndarray): The input image
+
+    Returns:
+        np.ndarray: Boolean mask containing the circle to be inpainted
+    """
     # Get the gray image
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
