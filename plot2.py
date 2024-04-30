@@ -22,7 +22,7 @@ data_cleaned.reset_index(drop=True, inplace=True)
 # Adjusting the subplot to correctly align the x labels with the x ticks
 
 # Replotting with adjusted x-tick alignment
-fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5.5))
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5.5))
 
 # Plotting Accuracy
 axes[0].plot(data_cleaned['Processing Phase'], data_cleaned['Accuracy'],
@@ -42,15 +42,6 @@ axes[1].set_title('RMSE by Processing Phase')
 axes[1].set_ylabel('RMSE')
 axes[1].set_xticks(data_cleaned['Processing Phase'])
 axes[1].set_xticklabels(data_cleaned['Processing Phase'],
-                        rotation=45, ha="right", rotation_mode='anchor')
-
-# Plotting BRISQUE
-axes[2].plot(data_cleaned['Processing Phase'], data_cleaned['BRISQUE'],
-             marker='o', linestyle='-', color='lightgreen')
-axes[2].set_title('BRISQUE by Processing Phase')
-axes[2].set_ylabel('BRISQUE')
-axes[2].set_xticks(data_cleaned['Processing Phase'])
-axes[2].set_xticklabels(data_cleaned['Processing Phase'],
                         rotation=45, ha="right", rotation_mode='anchor')
 
 # Adjust layout

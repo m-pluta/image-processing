@@ -23,8 +23,8 @@ def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str):
     full_image_paths = []
     view = False
 
-    show_random_images([os.path.join(IN_DIR, image_name)
-                       for image_name in image_names], 2, 2)
+    # show_random_images([os.path.join(IN_DIR, image_name)
+    #                    for image_name in image_names], 2, 2)
 
     for image_name in image_names[16:17]:
         print(image_name)
@@ -36,22 +36,22 @@ def process_images(image_names: list[str], IN_DIR: str, OUT_DIR: str):
         if not USE_CHECKPOINT:
             # Perspective Correction
             corners = detect_corners(image)
-            cv2.imwrite("prev.png", image)
             image = perspective_correction(image, corners)
-            cv2.imwrite("after.png", image)
 
             # Inpainting the image
             circle = detect_circle(image)
+            # image = cv2.inpaint(image, circle.astype(
+            #     np.uint8), 3, cv2.INPAINT_TELEA)
             image = inpaint(image, circle, debug=True)
 
-        # Noise detection/thresholding
-        image = remove_noise(image, image_name, view=view)
-        view = False
+        # # Noise detection/thresholding
+        # image = remove_noise(image, image_name, view=view)
+        # view = False
 
-        # Colour and Contrast Adjustment
-        image = cv2.convertScaleAbs(image, alpha=1.31, beta=-41)
+        # # Colour and Contrast Adjustment
+        # image = cv2.convertScaleAbs(image, alpha=1.31, beta=-41)
 
-        image = gamma_correction(image, 1.5)
+        # image = gamma_correction(image, 1.5)
 
         # Save the images
         image_name = image_name.split('.')[0] + '.' + OUTPUT_TYPE
